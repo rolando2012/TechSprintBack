@@ -1,0 +1,112 @@
+[
+    {
+      "departamento": "Beni",
+      "municipios": [
+        "Trinidad",
+        "Riberalta",
+        "Guayaramerín",
+        "Guayaray",
+        "Rurrenabaque",
+        "San Joaquín",
+        "San Andrés",
+        "Santa Ana del Yacuma"
+      ]
+    },
+    {
+      "departamento": "Chuquisaca",
+      "municipios": [
+        "Sucre",
+        "Padilla",
+        "Zudáñez",
+        "Villa Serrano",
+        "Camargo",
+        "Yotala",
+        "Tarabuco"
+      ]
+    },
+    {
+      "departamento": "Cochabamba",
+      "municipios": [
+        "Cochabamba",
+        "Sacaba",
+        "Quillacollo",
+        "Sipe Sipe",
+        "Colcapirhua",
+        "Vinto",
+        "Tiquipaya",
+        "Arani",
+        "Anzaldo"
+      ]
+    },
+    {
+      "departamento": "La Paz",
+      "municipios": [
+        "La Paz",
+        "El Alto",
+        "Viacha",
+        "Aroma",
+        "Ingavi",
+        "Los Andes",
+        "Murillo",
+        "Omasuyos",
+        "Los Yungas"
+      ]
+    },
+    {
+      "departamento": "Oruro",
+      "municipios": [
+        "Oruro",
+        "Huanuni",
+        "Sabaya",
+        "Sabaya",
+        "Turco",
+        "Carangas",
+        "Mejillones"
+      ]
+    },
+    {
+      "departamento": "Pando",
+      "municipios": [
+        "Cobija",
+        "Porvenir",
+        "Bolpebra",
+        "Filadelfia",
+        "San Lorenzo",
+        "Bella Flor"
+      ]
+    },
+    {
+      "departamento": "Potosí",
+      "municipios": [
+        "Potosí",
+        "Uyuni",
+        "Atocha",
+        "Tupiza",
+        "Villazón",
+        "Chayanta"
+      ]
+    },
+    {
+      "departamento": "Santa Cruz",
+      "municipios": [
+        "Santa Cruz de la Sierra",
+        "Montero",
+        "Warnes",
+        "La Guardia",
+        "Cotoca",
+        "Camiri",
+        "Roboré"
+      ]
+    },
+    {
+      "departamento": "Tarija",
+      "municipios": [
+        "Tarija",
+        "Padcaya",
+        "Villa Montes",
+        "Bermejo",
+        "Yacuiba"
+      ]
+    }
+  ]
+  

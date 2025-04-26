@@ -1,0 +1,24 @@
+{
+    "areas": [
+      "ASTRONOMÍA - ASTROFÍSICA",
+      "BIOLOGÍA",
+      "FÍSICA",
+      "INFORMÁTICA",
+      "MATEMÁTICAS",
+      "QUÍMICA",
+      "ROBÓTICA"
+    ],
+    "niveles": [
+      "3P","4P","5P","6P",
+      "1S","2S","3S","4S","5S","6S",
+      "Primer Nivel","Segundo Nivel","Tercer Nivel","Cuarto Nivel","Quinto Nivel","Sexto Nivel",
+      "Guacamayo","Guanaco","Londra","Jucumari","Bufeo","Puma",
+      "Builders P","Builders S","Lego P","Lego S"
+    ],
+    "grados": [
+      "3ro Primaria","4to Primaria","5to Primaria","6to Primaria",
+      "1ro Secundaria","2do Secundaria","3ro Secundaria","4to Secundaria","5to Secundaria","6to Secundaria",
+      "5to a 6to Primaria","1ro a 3ro Secundaria","4to a 6to Secundaria","1ro a 6to Secundaria"
+    ]
+  }
+  
