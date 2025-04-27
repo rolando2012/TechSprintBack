@@ -9,7 +9,7 @@ const getMunicipios = async (req, res) => {
     const id = parseInt(req.params.id);
     if (isNaN(id)) {
         return res.status(400).json({ message: 'El parámetro id debe ser un número entero.' });
-      }
+    }
     const municipios = await prisma.municipio.findMany({
         select:{
             codMun:true,

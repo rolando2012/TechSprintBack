@@ -4,7 +4,7 @@ const morgan = require('morgan');
 const cors = require('cors');
 
 const competidor = require('./routes/competidor.routes');
-const competencia = require('./routes/competencia.routes');
+const registro = require('./routes/registro.routes');
 
 const app = express();
 
@@ -16,6 +16,6 @@ app.set('port', config.app.port);
 
 //rutas
 app.use('/api/competidor',competidor);
-app.use('/api/competencia',competencia);
+app.use('/api/registro',registro);
 
 module.exports = app;

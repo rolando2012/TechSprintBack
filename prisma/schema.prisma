@@ -99,7 +99,7 @@ model UserNRol {
 
 model Competencia {
   codCompet     Int                   @id @default(autoincrement()) @db.Integer
-  nombreCompet  String                @db.VarChar(30)
+  nombreCompet  String                @unique @db.VarChar(100)
   fechaIni      DateTime  @db.Date
   fechaFin      DateTime  @db.Date
   horaIniIns    DateTime  @db.Time
@@ -197,8 +197,8 @@ model CompCampObl {
 model EtapaCompetencia {
   codEtapa       Int      @id @default(autoincrement()) @db.Integer
   codCompetencia Int      @db.Integer
-  nombreEtapa    String   @db.VarChar(30)
-  descripcion    String?  @db.VarChar(100)
+  nombreEtapa    String   @db.VarChar(50)
+  descripcion    String?  @db.VarChar(255)
   fechaInicio    DateTime @db.Date
   horaInicio     DateTime @db.Time
   fechaFin       DateTime @db.Date
