@@ -6,6 +6,6 @@ const router = express.Router();
 
 router.get('/departamentos', getDepartamentos);
 
-router.get('/municipios/:id', getMunicipios);
+router.get('/departamentos/:id/municipios', getMunicipios);
 
 module.exports = router;
