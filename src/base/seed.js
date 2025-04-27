@@ -4,41 +4,6 @@ const { PrismaClient } = require("@prisma/client");
 
 const prisma = new PrismaClient();
 
-async function seedGradosYNiveles() {
-  const data = JSON.parse(
-    await fs.readFile(path.join(__dirname, "../../data/grados-niveles.json"), "utf8")
-  );
-
-  // 1) Crear Grados
-  const gradoMap = {};
-  for (const nombreGrado of data.grados) {
-    const g = await prisma.grado.upsert({
-      where: { nombreGrado },
-      update: {},
-      create: { nombreGrado },
-    });
-    gradoMap[nombreGrado] = g;
-  }
-
-  // 2) Crear Niveles y asociarlos a cada Grado
-  for (const [nombreGrado, listaNiveles] of Object.entries(data.niveles)) {
-    const g = gradoMap[nombreGrado];
-    for (const nombreNivel of listaNiveles) {
-      const n = await prisma.nivel.upsert({
-        where: { nombreNivel },
-        update: {},
-        create: { nombreNivel },
-      });
-      // Crear la asociación GradoNivel
-      await prisma.gradoNivel.upsert({
-        where: { codGrado_codNivel: { codGrado: g.codGrado, codNivel: n.codNivel } },
-        update: {},
-        create: { codGrado: g.codGrado, codNivel: n.codNivel },
-      });
-    }
-  }
-}
-
 async function seedPrimeraCompetencia() {
   // 3) Primera Competencia
   const comp = await prisma.competencia.upsert({
@@ -141,41 +106,9 @@ async function seedDepartamentos() {
   }
 }
 
-async function seedCatalogo() {
-  const catalogo = JSON.parse(
-    await fs.readFile(path.join(__dirname, "../../data/catalogo.json"), "utf8")
-  );
-
-  for (const nombreArea of catalogo.areas) {
-    await prisma.area.upsert({
-      where: { nombreArea },
-      update: {},
-      create: { nombreArea },
-    });
-  }
-  for (const nombreNivel of catalogo.niveles) {
-    await prisma.nivel.upsert({
-      where: { nombreNivel },
-      update: {},
-      create: { nombreNivel },
-    });
-  }
-  for (const nombreGrado of catalogo.grados) {
-    await prisma.grado.upsert({
-      where: { nombreGrado },
-      update: {},
-      create: { nombreGrado },
-    });
-  }
-}
-
 async function main() {
   console.log("🌱 Seed de Departamentos y Municipios...");
   await seedDepartamentos();
-  // console.log("🌱 Seed de Área, Nivel y Grado...");
-  // await seedCatalogo();
-  // console.log("🌱 Seed de Grados y Niveles...");
-  // await seedGradosYNiveles();
   console.log("🌱 Seed de Primera Competencia y Etapas...");
   await seedPrimeraCompetencia();
   console.log("✅ Seed completado exitosamente");

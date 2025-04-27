@@ -1,4 +1,3 @@
-// src/base/seed-extended.js
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcrypt');
 const fs = require('fs/promises');
@@ -172,4 +171,3 @@ const gradoRec = await prisma.grado.findUnique({ where: { nombreGrado: gradoName
 }
 
 main().catch(e => { console.error(e); process.exit(1); }).finally(() => prisma.$disconnect());
-

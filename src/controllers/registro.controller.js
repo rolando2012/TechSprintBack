@@ -35,7 +35,7 @@ const getAreas = async (req, res) => {
     res.json(areas);
 }
 
-const getGrados = async (req, res) => {
+const getGradosNivel = async (req, res) => {
     const id = parseInt(req.params.id);
     if (isNaN(id)) {
         return res.status(400).json({ message: 'El parámetro id debe ser un número entero.' });
@@ -43,15 +43,27 @@ const getGrados = async (req, res) => {
     const grados = await prisma.areaGrado.findMany({
         select:{
             codGrado:true,
-           grado:{
+            grado:{
                 select:{
                     nombreGrado:true,
-                }
+                    gradosNivel:{
+                        select:{
+                            codNivel:true,
+                            nivel:{
+                                select:{
+                                    nombreNivel:true,
+                                }
+                            }
+                        
+                        }
+                    },
+                },
             }
            },
         where: {
             codArea: id
         }
+
     });
     res.json(grados);
 }
@@ -60,5 +72,5 @@ module.exports = {
     getDepartamentos,
     getMunicipios,
     getAreas,
-    getGrados
+    getGradosNivel,
 }
