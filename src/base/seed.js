@@ -172,10 +172,10 @@ async function seedCatalogo() {
 async function main() {
   console.log("🌱 Seed de Departamentos y Municipios...");
   await seedDepartamentos();
-  console.log("🌱 Seed de Área, Nivel y Grado...");
-  await seedCatalogo();
-  console.log("🌱 Seed de Grados y Niveles...");
-  await seedGradosYNiveles();
+  // console.log("🌱 Seed de Área, Nivel y Grado...");
+  // await seedCatalogo();
+  // console.log("🌱 Seed de Grados y Niveles...");
+  // await seedGradosYNiveles();
   console.log("🌱 Seed de Primera Competencia y Etapas...");
   await seedPrimeraCompetencia();
   console.log("✅ Seed completado exitosamente");

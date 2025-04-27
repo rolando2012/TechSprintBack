@@ -1,0 +1,77 @@
+[
+    {
+      "area": "ASTRONOMÍA - ASTROFÍSICA",
+      "items": [
+        { "nivel": "3P", "grado": "3ro Primaria" },
+        { "nivel": "4P", "grado": "4to Primaria" },
+        { "nivel": "5P", "grado": "5to Primaria" },
+        { "nivel": "6P", "grado": "6to Primaria" },
+        { "nivel": "1S", "grado": "1ro Secundaria" },
+        { "nivel": "2S", "grado": "2do Secundaria" },
+        { "nivel": "3S", "grado": "3ro Secundaria" },
+        { "nivel": "4S", "grado": "4to Secundaria" },
+        { "nivel": "5S", "grado": "5to Secundaria" },
+        { "nivel": "6S", "grado": "6to Secundaria" }
+      ]
+    },
+    {
+      "area": "BIOLOGÍA",
+      "items": [
+        { "nivel": "2S", "grado": "2do Secundaria" },
+        { "nivel": "3S", "grado": "3ro Secundaria" },
+        { "nivel": "4S", "grado": "4to Secundaria" },
+        { "nivel": "5S", "grado": "5to Secundaria" },
+        { "nivel": "6S", "grado": "6to Secundaria" }
+      ]
+    },
+    {
+      "area": "FÍSICA",
+      "items": [
+        { "nivel": "4S", "grado": "4to Secundaria" },
+        { "nivel": "5S", "grado": "5to Secundaria" },
+        { "nivel": "6S", "grado": "6to Secundaria" }
+      ]
+    },
+    {
+      "area": "INFORMÁTICA",
+      "items": [
+        { "nivel": "Guacamayo", "grado": "5to a 6to Primaria" },
+        { "nivel": "Guanaco",   "grado": "1ro a 3ro Secundaria" },
+        { "nivel": "Londra",    "grado": "1ro a 3ro Secundaria" },
+        { "nivel": "Jucumari",  "grado": "4to a 6to Secundaria" },
+        { "nivel": "Bufeo",     "grado": "1ro a 3ro Secundaria" },
+        { "nivel": "Puma",      "grado": "4to a 6to Secundaria" }
+      ]
+    },
+    {
+      "area": "MATEMÁTICAS",
+      "items": [
+        { "nivel": "Primer Nivel",  "grado": "1ro Secundaria" },
+        { "nivel": "Segundo Nivel", "grado": "2do Secundaria" },
+        { "nivel": "Tercer Nivel",  "grado": "3ro Secundaria" },
+        { "nivel": "Cuarto Nivel",  "grado": "4to Secundaria" },
+        { "nivel": "Quinto Nivel",  "grado": "5to Secundaria" },
+        { "nivel": "Sexto Nivel",   "grado": "6to Secundaria" }
+      ]
+    },
+    {
+      "area": "QUÍMICA",
+      "items": [
+        { "nivel": "2S", "grado": "2do Secundaria" },
+        { "nivel": "3S", "grado": "3ro Secundaria" },
+        { "nivel": "4S", "grado": "4to Secundaria" },
+        { "nivel": "5S", "grado": "5to Secundaria" },
+        { "nivel": "6S", "grado": "6to Secundaria" }
+      ]
+    },
+    {
+      "area": "ROBÓTICA",
+      "items": [
+        { "nivel": "Builders P", "grado": "5to a 6to Primaria" },
+        { "nivel": "Builders S", "grado": "1ro a 6to Secundaria" },
+        { "nivel": "Lego P",     "grado": "5to a 6to Primaria" },
+        { "nivel": "Lego S",     "grado": "1ro a 6to Secundaria" }
+      ]
+    }
+  ]
+  

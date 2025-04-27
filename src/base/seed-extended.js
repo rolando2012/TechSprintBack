@@ -7,75 +7,78 @@ const path = require('path');
 const prisma = new PrismaClient();
 const SALT_ROUNDS = 10;
 
+// Genera el hash de la contraseña
 async function hashPassword(plain) {
   return bcrypt.hash(plain, SALT_ROUNDS);
 }
 
+// Seed del catálogo académico: Area, Grado, Nivel y relaciones AreaGrado, GradoNivel
 async function seedAcademicCatalog() {
-  // Grados y niveles académicos
-  const mapping = {
-    Primaria: ['3ro Primaria', '4to Primaria', '5to Primaria', '6to Primaria'],
-    Secundaria: [
-      '1ro Secundaria', '2do Secundaria', '3ro Secundaria',
-      '4to Secundaria', '5to Secundaria', '6to Secundaria'
-    ]
-  };
+  const file = path.join(__dirname, '../../data/area-grado-nivel.json');
+  const catalog = JSON.parse(await fs.readFile(file, 'utf8'));
 
-  for (const areaName of Object.keys(mapping)) {
-    // Área académica
-    await prisma.area.upsert({
-      where: { nombreArea: areaName },
+  for (const { area, items } of catalog) {
+    // Upsert de Área
+    const areaRec = await prisma.area.upsert({
+      where: { nombreArea: area },
       update: {},
-      create: { nombreArea: areaName }
+      create: { nombreArea: area }
     });
 
-    // Grado correspondiente
-    await prisma.grado.upsert({
-      where: { nombreGrado: areaName },
-      update: {},
-      create: { nombreGrado: areaName }
-    });
-
-    // Niveles bajo ese grado
-    const gradosRecord = await prisma.grado.findUnique({ where: { nombreGrado: areaName } });
-    for (const nivelName of mapping[areaName]) {
-      const nivelRecord = await prisma.nivel.upsert({
-        where: { nombreNivel: nivelName },
+    for (const { nivel, grado } of items) {
+      // Upsert de Nivel
+      const nivelRec = await prisma.nivel.upsert({
+        where: { nombreNivel: nivel },
         update: {},
-        create: { nombreNivel: nivelName }
+        create: { nombreNivel: nivel }
       });
-      // Asociación GradoNivel
-      await prisma.gradoNivel.upsert({
-        where: { codGrado_codNivel: { codGrado: gradosRecord.codGrado, codNivel: nivelRecord.codNivel } },
+
+      // Upsert de Grado
+      const gradoRec = await prisma.grado.upsert({
+        where: { nombreGrado: grado },
         update: {},
-        create: { codGrado: gradosRecord.codGrado, codNivel: nivelRecord.codNivel }
+        create: { nombreGrado: grado }
+      });
+
+      // Relación AreaGrado
+      await prisma.areaGrado.upsert({
+        where: { codArea_codGrado: { codArea: areaRec.codArea, codGrado: gradoRec.codGrado } },
+        update: {},
+        create: { codArea: areaRec.codArea, codGrado: gradoRec.codGrado }
+      });
+
+      // Relación GradoNivel
+      await prisma.gradoNivel.upsert({
+        where: { codGrado_codNivel: { codGrado: gradoRec.codGrado, codNivel: nivelRec.codNivel } },
+        update: {},
+        create: { codGrado: gradoRec.codGrado, codNivel: nivelRec.codNivel }
       });
     }
   }
 }
 
 async function main() {
-  // 0) Seed catálogo académico (área, grado, nivel)
+  // 0) Seed catálogo académico
   await seedAcademicCatalog();
 
   // 1) Crear roles
   const rolesMap = {};
-  for (const tipo of ['Administrador', 'Cajero', 'Tutor', 'Competidor']) {
+  for (const tipo of ['Administrador','Cajero','Tutor','Competidor']) {
     const rol = await prisma.rol.upsert({
-      where: { nombreRol: tipo }, update: {}, create: { nombreRol: tipo }
+      where: { nombreRol: tipo },
+      update: {},
+      create: { nombreRol: tipo }
     });
     rolesMap[tipo] = rol.codRol;
   }
 
-  // 2) Seed Administradores y Cajeros
-  const data = JSON.parse(
-    await fs.readFile(path.join(__dirname, '../../data/initial.json'), 'utf8')
-  );
+  // 2) Leer datos iniciales
+  const dataPath = path.join(__dirname, '../../data/initial.json');
+  const data = JSON.parse(await fs.readFile(dataPath, 'utf8'));
 
+  // 3) Seed Administradores y Cajeros
   for (const u of data.users) {
-    const per = await prisma.persona.upsert({
-      where: { carnet: u.persona.carnet }, update: {}, create: u.persona
-    });
+    const per = await prisma.persona.upsert({ where: { carnet: u.persona.carnet }, update: {}, create: u.persona });
     const hashed = await hashPassword('1234');
     const user = await prisma.userN.upsert({
       where: { codPer: per.codPer },
@@ -84,25 +87,20 @@ async function main() {
     });
     await prisma.userNRol.upsert({
       where: { codUserN_codRol: { codUserN: user.codUserN, codRol: rolesMap[u.tipo] } },
-      update: {}, create: { codUserN: user.codUserN, codRol: rolesMap[u.tipo] }
+      update: {},
+      create: { codUserN: user.codUserN, codRol: rolesMap[u.tipo] }
     });
     if (u.tipo === 'Administrador') {
-      await prisma.administrador.upsert({
-        where: { codPer: per.codPer }, update: {}, create: { codPer: per.codPer }
-      });
+      await prisma.administrador.upsert({ where: { codPer: per.codPer }, update: {}, create: { codPer: per.codPer } });
     } else {
-      await prisma.cajero.upsert({
-        where: { codPer: per.codPer }, update: {}, create: { codPer: per.codPer }
-      });
+      await prisma.cajero.upsert({ where: { codPer: per.codPer }, update: {}, create: { codPer: per.codPer } });
     }
   }
 
-  // 3) Seed Tutores
+  // 4) Seed Tutores
   const tutorMap = {};
   for (const t of data.tutores) {
-    const per = await prisma.persona.upsert({
-      where: { carnet: t.persona.carnet }, update: {}, create: t.persona
-    });
+    const per = await prisma.persona.upsert({ where: { carnet: t.persona.carnet }, update: {}, create: t.persona });
     const hashed = await hashPassword('1234');
     const user = await prisma.userN.upsert({
       where: { codPer: per.codPer },
@@ -111,85 +109,67 @@ async function main() {
     });
     await prisma.userNRol.upsert({
       where: { codUserN_codRol: { codUserN: user.codUserN, codRol: rolesMap['Tutor'] } },
-      update: {}, create: { codUserN: user.codUserN, codRol: rolesMap['Tutor'] }
+      update: {},
+      create: { codUserN: user.codUserN, codRol: rolesMap['Tutor'] }
     });
-    const tut = await prisma.tutor.upsert({
-      where: { codPer: per.codPer },
-      update: { codMun: t.codMun },
-      create: { codPer: per.codPer, institucion: 'Instituto X', codMun: t.codMun }
-    });
+    const tut = await prisma.tutor.upsert({ where: { codPer: per.codPer }, update: { codMun: t.codMun }, create: { codPer: per.codPer, institucion: 'Instituto X', codMun: t.codMun } });
     tutorMap[t.persona.email] = tut.codTut;
   }
 
-  // 4) Seed Competencia
+  // 5) Seed Competencia y Modalidad dinámica
   const comp = await prisma.competencia.upsert({
     where: { nombreCompet: 'Olimpiada de Ciencia y Tecnología' },
     update: {},
     create: {
       nombreCompet: 'Olimpiada de Ciencia y Tecnología',
-      fechaIni: new Date('2025-04-15'),
-      fechaFin: new Date('2025-04-30'),
-      horaIniIns: new Date('2025-04-15T00:00:00'),
-      horaFinIns: new Date('2025-04-30T23:59:59'),
+      fechaIni: new Date('2025-04-15'), fechaFin: new Date('2025-04-30'),
+      horaIniIns: new Date('2025-04-15T00:00:00'), horaFinIns: new Date('2025-04-30T23:59:59'),
       costo: 16, gestion: 2025
     }
   });
 
-  // 5) Seed ModalidadCompetencia (Primaria – 3ro Primaria)
-  const area = await prisma.area.findUnique({ where: { nombreArea: 'Primaria' } });
-  const grado = await prisma.grado.findUnique({ where: { nombreGrado: 'Primaria' } });
-  const nivel = await prisma.nivel.findUnique({ where: { nombreNivel: '3ro Primaria' } });
-  if (!area || !grado || !nivel) {
-    throw new Error('Faltan registros de Área, Grado o Nivel');
-  }
+  // Leer catálogo para ASTRONOMÍA - ASTROFÍSICA
+  const catFile = path.join(__dirname, '../../data/area-grado-nivel.json');
+  const catalog = JSON.parse(await fs.readFile(catFile, 'utf8'));
+  const astroEntry = catalog.find(entry => entry.area === 'ASTRONOMÍA - ASTROFÍSICA');
+  if (!astroEntry) throw new Error('No se encontró el área ASTRONOMÍA - ASTROFÍSICA en el catálogo');
+  const { nivel: nivelName, grado: gradoName } = astroEntry.items[0];
+
+  //console.log({ area: astroEntry.area, gradoName, nivelName });
+
+  // Obtener registros dinámicos
+  const areaRec = await prisma.area.findUnique({ where: { nombreArea: astroEntry.area } });
+  const nivelRec = await prisma.nivel.findUnique({ where: { nombreNivel: nivelName.trim() } });
+const gradoRec = await prisma.grado.findUnique({ where: { nombreGrado: gradoName.trim() } });
+
+  if (!areaRec || !gradoRec || !nivelRec) throw new Error(`Faltan registros: areaRec ${areaRec}, gradoRec ${gradoRec}, nivelRec ${nivelRec}`);
+
+  // Upsert ModalidadCompetencia
   let modal = await prisma.modalidadCompetencia.findFirst({
-    where: { codCompet: comp.codCompet, codArea: area.codArea, codGrado: grado.codGrado, codNivel: nivel.codNivel }
+    where: { codCompet: comp.codCompet, codArea: areaRec.codArea, codGrado: gradoRec.codGrado, codNivel: nivelRec.codNivel }
   });
   if (!modal) {
-    modal = await prisma.modalidadCompetencia.create({
-      data: { codCompet: comp.codCompet, codArea: area.codArea, codGrado: grado.codGrado, codNivel: nivel.codNivel }
-    });
+    modal = await prisma.modalidadCompetencia.create({ data: { codCompet: comp.codCompet, codArea: areaRec.codArea, codGrado: gradoRec.codGrado, codNivel: nivelRec.codNivel } });
   }
 
   // 6) Seed Competidores + Inscripciones
   for (const c of data.competidores) {
     const per = await prisma.persona.upsert({ where: { carnet: c.persona.carnet }, update: {}, create: c.persona });
     const hashed = await hashPassword('1234');
-    const user = await prisma.userN.upsert({
-      where: { codPer: per.codPer },
-      update: { passwUser: hashed, codSis: 'TS-COMP' },
-      create: { codPer: per.codPer, passwUser: hashed, codSis: 'TS-COMP' }
-    });
-    await prisma.userNRol.upsert({
-      where: { codUserN_codRol: { codUserN: user.codUserN, codRol: rolesMap['Competidor'] } },
-      update: {}, create: { codUserN: user.codUserN, codRol: rolesMap['Competidor'] }
-    });
-    if (!c.colegio) throw new Error(`Falta colegio para competidor ${c.persona.carnet}`);
-    const nivelRec = await prisma.nivel.findUnique({ where: { nombreNivel: c.nivel } });
+    const user = await prisma.userN.upsert({ where: { codPer: per.codPer }, update: { passwUser: hashed, codSis: 'TS-COMP' }, create: { codPer: per.codPer, passwUser: hashed, codSis: 'TS-COMP' } });
+    await prisma.userNRol.upsert({ where: { codUserN_codRol: { codUserN: user.codUserN, codRol: rolesMap['Competidor'] } }, update: {}, create: { codUserN: user.codUserN, codRol: rolesMap['Competidor'] } });
+    const nivelC = await prisma.nivel.findUnique({ where: { nombreNivel: c.nivel } });
     await prisma.competidor.upsert({
       where: { codPer: per.codPer },
-      update: {
-        fechaNac: new Date(c.fechaNac), codMun: c.codMun,
-        colegio: c.colegio, grado: c.grado, nivel: nivelRec.codNivel
-      },
-      create: {
-        codPer: per.codPer, fechaNac: new Date(c.fechaNac), codMun: c.codMun,
-        colegio: c.colegio, grado: c.grado, nivel: nivelRec.codNivel
-      }
+      update: { fechaNac: new Date(c.fechaNac), codMun: c.codMun, colegio: c.colegio, grado: c.grado, nivel: nivelC.codNivel },
+      create: { codPer: per.codPer, fechaNac: new Date(c.fechaNac), codMun: c.codMun, colegio: c.colegio, grado: c.grado, nivel: nivelC.codNivel }
     });
-    const codTut = tutorMap[c.tutorEmail]; if (!codTut) throw new Error(`Tutor no encontrado: ${c.tutorEmail}`);
-    await prisma.inscripcion.create({
-      data: {
-        codModal: modal.codModal, codTutor: codTut,
-        codCompet: comp.codCompet, estadoInscripcion: 'Pendiente', fechaInscripcion: new Date()
-      }
-    });
+    const codTut = tutorMap[c.tutorEmail];
+    await prisma.inscripcion.create({ data: { codModal: modal.codModal, codTutor: codTut, codCompet: comp.codCompet, estadoInscripcion: 'Pendiente', fechaInscripcion: new Date() } });
   }
 
-  console.log('✅ Seed completo con Competencia y Modalidad');
+  console.log('✅ Seed completo con catálogo académico, usuarios y competidores.');
 }
 
-main()
-  .catch(e => { console.error(e); process.exit(1); })
-  .finally(() => prisma.$disconnect());
+main().catch(e => { console.error(e); process.exit(1); }).finally(() => prisma.$disconnect());
 
