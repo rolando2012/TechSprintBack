@@ -106,6 +106,7 @@ npx prisma migrate deploy
 ```
 node ./src/base/seed.js
 node ./src/base/seed-extended.js
+node ./src/base/seed-last.js
 
 ```
 ## Reiniciar base de datos

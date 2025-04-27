@@ -68,9 +68,27 @@ const getGradosNivel = async (req, res) => {
     res.json(grados);
 }
 
+const getCostoCompetencia = async (req, res) => {
+    const gestion = parseInt(req.params.gestion);
+    if (isNaN(gestion)) {
+        return res.status(400).json({ message: 'El parámetro id debe ser un número entero.' });
+    }
+    const costo = await prisma.competencia.findMany({
+        select:{
+            codCompet:true,
+            costo:true
+        },
+        where: {
+            gestion: gestion
+        }
+    });
+    res.json(costo);
+}
+
 module.exports = {
     getDepartamentos,
     getMunicipios,
     getAreas,
     getGradosNivel,
+    getCostoCompetencia,
 }

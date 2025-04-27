@@ -212,13 +212,11 @@ model EtapaCompetencia {
 model CompetenciaArea {
   codCompet Int      @db.Integer
   codArea   Int      @db.Integer
-  campo      String   @db.VarChar(30)
 
   competencia Competencia @relation(fields: [codCompet], references: [codCompet])
   area        Area        @relation(fields: [codArea], references: [codArea])
 
   @@id([codCompet, codArea])
-  @@index([campo], name: "idx_competenciaarea_campo")
 }
 
 model AreaGrado {
