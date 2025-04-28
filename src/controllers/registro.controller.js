@@ -125,9 +125,37 @@ const getGradosNivel = async (req, res) => {
     res.json(salida);
 };
 
+const getTutores = async (req, res) => {
+    const tutores = await prisma.tutor.findMany({
+        select:{
+            codPer: true,
+            codTut: true,
+            persona:{
+                select:{
+                    nombre: true,
+                    apellidoPaterno: true,
+                    apellidoMaterno: true,
+                }
+            }
+        }
+    });
+
+    // Aplanamos cada objeto combinando los datos de tutor y persona
+    const flattenedTutores = tutores.map(({ codPer, codTut, persona }) => ({
+        codPer,
+        codTut,
+        ...persona
+    }));
+
+    res.json(flattenedTutores);
+};
+
+
+
 module.exports = {
     getDepartamentos,
     getMunicipios,
     getAreas,
-    getGradosNivel
+    getGradosNivel,
+    getTutores,
 }
