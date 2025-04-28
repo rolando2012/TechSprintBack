@@ -10,6 +10,6 @@ router.get('/departamentos/:id/municipios', getMunicipios);
 
 router.get('/areas',getAreas)
 
-router.get('/areas/grados/nivel/:gestion', getGradosNivel);
+router.get('/areas/grados/nivel/:gestion/:area', getGradosNivel);
 
 module.exports = router;

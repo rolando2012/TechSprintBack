@@ -37,9 +37,22 @@ const getAreas = async (req, res) => {
 
 // Supongamos que codCompet en la tabla competencia coincide con codGrado
 const getGradosNivel = async (req, res) => {
+    console.log(req.params.area);
     const gestion = parseInt(req.params.gestion, 10);
     if (isNaN(gestion)) {
         return res.status(400).json({ message: 'El parámetro gestión debe ser un número entero.' });
+    }
+
+    const idArea = await prisma.area.findFirst({
+        where: {
+            nombreArea: req.params.area,
+        },
+        select: {
+            codArea: true,
+        },
+    });
+    if (!idArea) {
+        return res.status(404).json({ message: 'Área no encontrada' });
     }
 
     // 1. Traigo los grados por área con su nivel
@@ -63,6 +76,9 @@ const getGradosNivel = async (req, res) => {
         },
         },
     },
+    where:{
+        codArea: idArea.codArea,
+    }
     });
 
     // 2. Traigo los costos de competencias para esta gestión

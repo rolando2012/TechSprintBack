@@ -130,8 +130,8 @@ async function main() {
   // Leer catálogo para ASTRONOMÍA - ASTROFÍSICA
   const catFile = path.join(__dirname, '../../data/area-grado-nivel.json');
   const catalog = JSON.parse(await fs.readFile(catFile, 'utf8'));
-  const astroEntry = catalog.find(entry => entry.area === 'ASTRONOMÍA - ASTROFÍSICA');
-  if (!astroEntry) throw new Error('No se encontró el área ASTRONOMÍA - ASTROFÍSICA en el catálogo');
+  const astroEntry = catalog.find(entry => entry.area === 'Astronomía - astrofísica');
+  if (!astroEntry) throw new Error('No se encontró el área Astronomía - astrofísica en el catálogo');
   const { nivel: nivelName, grado: gradoName } = astroEntry.items[0];
 
   //console.log({ area: astroEntry.area, gradoName, nivelName });
