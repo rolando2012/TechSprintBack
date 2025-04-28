@@ -1,6 +1,6 @@
 const express = require('express');
 const prisma = require('../base/db');
-const { getDepartamentos, getMunicipios, getAreas, getGradosNivel, getTutores, } = require('../controllers/registro.controller');
+const { getDepartamentos, getMunicipios, getAreas, getGradosNivel, getTutores, regCompetidor, } = require('../controllers/registro.controller');
 
 const router = express.Router();
 
@@ -12,6 +12,8 @@ router.get('/areas',getAreas)
 
 router.get('/areas/grados/nivel/:gestion/:area', getGradosNivel);
 
-router.get('/tutores', getTutores)
+router.get('/tutores', getTutores);
+
+router.post('/competidor', regCompetidor);
 
 module.exports = router;

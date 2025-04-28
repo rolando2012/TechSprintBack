@@ -1,4 +1,5 @@
 const prisma = require('../base/db');
+const bcrypt = require('bcrypt');
 
 const getDepartamentos = async (req, res) => {
     const departamentos = await prisma.departamento.findMany();    
@@ -150,7 +151,66 @@ const getTutores = async (req, res) => {
     res.json(flattenedTutores);
 };
 
-
+const regCompetidor = async (req, res) => {
+    try {
+        const { persona, fechaNac, codMun, colegio, grado, nivel, tutorId } = req.body;
+    
+        // 1) Crear o actualizar Persona
+        const per = await prisma.persona.upsert({
+          where: { carnet: persona.carnet },
+          update: { ...persona },
+          create: persona
+        });
+    
+        // 2) Crear usuario (UserN) con contraseña por defecto y rol Competidor
+        const hashed = await bcrypt.hash('1234', 10);
+        const user = await prisma.userN.upsert({
+          where: { codPer: per.codPer },
+          update: { passwUser: hashed, codSis: 'TS-COMP' },
+          create: { codPer: per.codPer, passwUser: hashed, codSis: 'TS-COMP' }
+        });
+        await prisma.userNRol.upsert({
+          where: {
+            codUserN_codRol: { codUserN: user.codUserN, codRol: /* Competidor role ID */ 4 }
+          },
+          update: {},
+          create: { codUserN: user.codUserN, codRol: /* Competidor role ID */ 4 }
+        });
+    
+        // 3) Encontrar el nivel según nombreNivel
+        const nivelRec = await prisma.nivel.findUnique({ where: { nombreNivel: nivel } });
+        if (!nivelRec) throw new Error(`Nivel no encontrado: ${nivel}`);
+    
+        // 4) Crear Competidor
+        const comp = await prisma.competidor.create({
+          data: {
+            codPer: per.codPer,
+            fechaNac: new Date(fechaNac),
+            codMun,
+            colegio,
+            grado,
+            nivel: nivelRec.codNivel
+          }
+        });
+    
+        // 5) Crear Inscripcion pendiente (codModal asumido 1)
+        const ins = await prisma.inscripcion.create({
+          data: {
+            codModal: 1,
+            codTutor: tutorId,
+            codCompet: comp.codComp,
+            estadoInscripcion: 'Pendiente',
+            fechaInscripcion: new Date()
+          }
+        });
+        
+    
+        res.status(201).json({ competidor: comp, inscripcion: ins });
+      } catch (error) {
+        console.error(error);
+        res.status(400).json({ error: error.message });
+      }
+    };
 
 module.exports = {
     getDepartamentos,
@@ -158,4 +218,5 @@ module.exports = {
     getAreas,
     getGradosNivel,
     getTutores,
+    regCompetidor,
 }
