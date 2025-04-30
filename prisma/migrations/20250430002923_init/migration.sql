@@ -1,3 +1,6 @@
+-- CreateEnum
+CREATE TYPE "Ciclo" AS ENUM ('PRIMARIA', 'SECUNDARIA');
+
 -- CreateTable
 CREATE TABLE "Departamento" (
     "codDept" SERIAL NOT NULL,
@@ -58,7 +61,7 @@ CREATE TABLE "Tutor" (
 CREATE TABLE "UserN" (
     "codUserN" SERIAL NOT NULL,
     "codPer" INTEGER NOT NULL,
-    "passwUser" VARCHAR(30) NOT NULL,
+    "passwUser" VARCHAR(60) NOT NULL,
     "codSis" VARCHAR(10) NOT NULL,
 
     CONSTRAINT "UserN_pkey" PRIMARY KEY ("codUserN")
@@ -67,7 +70,7 @@ CREATE TABLE "UserN" (
 -- CreateTable
 CREATE TABLE "Rol" (
     "codRol" SERIAL NOT NULL,
-    "nombreRol" VARCHAR(10) NOT NULL,
+    "nombreRol" VARCHAR(20) NOT NULL,
 
     CONSTRAINT "Rol_pkey" PRIMARY KEY ("codRol")
 );
@@ -81,9 +84,43 @@ CREATE TABLE "UserNRol" (
 );
 
 -- CreateTable
+CREATE TABLE "Area" (
+    "codArea" SERIAL NOT NULL,
+    "nombreArea" VARCHAR(30) NOT NULL,
+
+    CONSTRAINT "Area_pkey" PRIMARY KEY ("codArea")
+);
+
+-- CreateTable
+CREATE TABLE "Grado" (
+    "codGrado" SERIAL NOT NULL,
+    "numero" INTEGER NOT NULL,
+    "ciclo" "Ciclo" NOT NULL,
+
+    CONSTRAINT "Grado_pkey" PRIMARY KEY ("codGrado")
+);
+
+-- CreateTable
+CREATE TABLE "AreaGrado" (
+    "codArea" INTEGER NOT NULL,
+    "codGrado" INTEGER NOT NULL,
+
+    CONSTRAINT "AreaGrado_pkey" PRIMARY KEY ("codArea","codGrado")
+);
+
+-- CreateTable
+CREATE TABLE "NivelEspecial" (
+    "codNivel" SERIAL NOT NULL,
+    "nombreNivel" VARCHAR(30) NOT NULL,
+    "codArea" INTEGER NOT NULL,
+
+    CONSTRAINT "NivelEspecial_pkey" PRIMARY KEY ("codNivel")
+);
+
+-- CreateTable
 CREATE TABLE "Competencia" (
     "codCompet" SERIAL NOT NULL,
-    "nombreCompet" VARCHAR(30) NOT NULL,
+    "nombreCompet" VARCHAR(100) NOT NULL,
     "fechaIni" DATE NOT NULL,
     "fechaFin" DATE NOT NULL,
     "horaIniIns" TIME NOT NULL,
@@ -95,36 +132,12 @@ CREATE TABLE "Competencia" (
 );
 
 -- CreateTable
-CREATE TABLE "Area" (
-    "codArea" SERIAL NOT NULL,
-    "nombreArea" VARCHAR(30) NOT NULL,
-
-    CONSTRAINT "Area_pkey" PRIMARY KEY ("codArea")
-);
-
--- CreateTable
-CREATE TABLE "Grado" (
-    "codGrado" SERIAL NOT NULL,
-    "nombreGrado" VARCHAR(30) NOT NULL,
-
-    CONSTRAINT "Grado_pkey" PRIMARY KEY ("codGrado")
-);
-
--- CreateTable
-CREATE TABLE "Nivel" (
-    "codNivel" SERIAL NOT NULL,
-    "nombreNivel" VARCHAR(30) NOT NULL,
-
-    CONSTRAINT "Nivel_pkey" PRIMARY KEY ("codNivel")
-);
-
--- CreateTable
 CREATE TABLE "ModalidadCompetencia" (
     "codModal" SERIAL NOT NULL,
     "codCompet" INTEGER NOT NULL,
     "codArea" INTEGER NOT NULL,
-    "codGrado" INTEGER NOT NULL,
-    "codNivel" INTEGER NOT NULL,
+    "codGrado" INTEGER,
+    "codNivelEspecial" INTEGER,
 
     CONSTRAINT "ModalidadCompetencia_pkey" PRIMARY KEY ("codModal")
 );
@@ -174,8 +187,8 @@ CREATE TABLE "CompCampObl" (
 CREATE TABLE "EtapaCompetencia" (
     "codEtapa" SERIAL NOT NULL,
     "codCompetencia" INTEGER NOT NULL,
-    "nombreEtapa" VARCHAR(30) NOT NULL,
-    "descripcion" VARCHAR(100),
+    "nombreEtapa" VARCHAR(50) NOT NULL,
+    "descripcion" VARCHAR(255),
     "fechaInicio" DATE NOT NULL,
     "horaInicio" TIME NOT NULL,
     "fechaFin" DATE NOT NULL,
@@ -190,25 +203,8 @@ CREATE TABLE "EtapaCompetencia" (
 CREATE TABLE "CompetenciaArea" (
     "codCompet" INTEGER NOT NULL,
     "codArea" INTEGER NOT NULL,
-    "campo" VARCHAR(30) NOT NULL,
 
     CONSTRAINT "CompetenciaArea_pkey" PRIMARY KEY ("codCompet","codArea")
-);
-
--- CreateTable
-CREATE TABLE "AreaGrado" (
-    "codArea" INTEGER NOT NULL,
-    "codGrado" INTEGER NOT NULL,
-
-    CONSTRAINT "AreaGrado_pkey" PRIMARY KEY ("codArea","codGrado")
-);
-
--- CreateTable
-CREATE TABLE "GradoNivel" (
-    "codGrado" INTEGER NOT NULL,
-    "codNivel" INTEGER NOT NULL,
-
-    CONSTRAINT "GradoNivel_pkey" PRIMARY KEY ("codGrado","codNivel")
 );
 
 -- CreateTable
@@ -266,19 +262,25 @@ CREATE UNIQUE INDEX "Rol_nombreRol_key" ON "Rol"("nombreRol");
 CREATE UNIQUE INDEX "Area_nombreArea_key" ON "Area"("nombreArea");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Grado_nombreGrado_key" ON "Grado"("nombreGrado");
+CREATE UNIQUE INDEX "Grado_numero_ciclo_key" ON "Grado"("numero", "ciclo");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Nivel_nombreNivel_key" ON "Nivel"("nombreNivel");
+CREATE UNIQUE INDEX "NivelEspecial_nombreNivel_key" ON "NivelEspecial"("nombreNivel");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Competencia_nombreCompet_key" ON "Competencia"("nombreCompet");
+
+-- CreateIndex
+CREATE INDEX "ModalidadCompetencia_codGrado_idx" ON "ModalidadCompetencia"("codGrado");
+
+-- CreateIndex
+CREATE INDEX "ModalidadCompetencia_codNivelEspecial_idx" ON "ModalidadCompetencia"("codNivelEspecial");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Competidor_codPer_key" ON "Competidor"("codPer");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "CamposObligatorios_nombreCampObl_key" ON "CamposObligatorios"("nombreCampObl");
-
--- CreateIndex
-CREATE INDEX "idx_competenciaarea_campo" ON "CompetenciaArea"("campo");
 
 -- AddForeignKey
 ALTER TABLE "Municipio" ADD CONSTRAINT "Municipio_codDept_fkey" FOREIGN KEY ("codDept") REFERENCES "Departamento"("codDept") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -305,16 +307,25 @@ ALTER TABLE "UserNRol" ADD CONSTRAINT "UserNRol_codUserN_fkey" FOREIGN KEY ("cod
 ALTER TABLE "UserNRol" ADD CONSTRAINT "UserNRol_codRol_fkey" FOREIGN KEY ("codRol") REFERENCES "Rol"("codRol") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "AreaGrado" ADD CONSTRAINT "AreaGrado_codArea_fkey" FOREIGN KEY ("codArea") REFERENCES "Area"("codArea") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "AreaGrado" ADD CONSTRAINT "AreaGrado_codGrado_fkey" FOREIGN KEY ("codGrado") REFERENCES "Grado"("codGrado") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "NivelEspecial" ADD CONSTRAINT "NivelEspecial_codArea_fkey" FOREIGN KEY ("codArea") REFERENCES "Area"("codArea") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "ModalidadCompetencia" ADD CONSTRAINT "ModalidadCompetencia_codCompet_fkey" FOREIGN KEY ("codCompet") REFERENCES "Competencia"("codCompet") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "ModalidadCompetencia" ADD CONSTRAINT "ModalidadCompetencia_codArea_fkey" FOREIGN KEY ("codArea") REFERENCES "Area"("codArea") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "ModalidadCompetencia" ADD CONSTRAINT "ModalidadCompetencia_codGrado_fkey" FOREIGN KEY ("codGrado") REFERENCES "Grado"("codGrado") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "ModalidadCompetencia" ADD CONSTRAINT "ModalidadCompetencia_codGrado_fkey" FOREIGN KEY ("codGrado") REFERENCES "Grado"("codGrado") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "ModalidadCompetencia" ADD CONSTRAINT "ModalidadCompetencia_codNivel_fkey" FOREIGN KEY ("codNivel") REFERENCES "Nivel"("codNivel") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "ModalidadCompetencia" ADD CONSTRAINT "ModalidadCompetencia_codNivelEspecial_fkey" FOREIGN KEY ("codNivelEspecial") REFERENCES "NivelEspecial"("codNivel") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Inscripcion" ADD CONSTRAINT "Inscripcion_codModal_fkey" FOREIGN KEY ("codModal") REFERENCES "ModalidadCompetencia"("codModal") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -345,18 +356,6 @@ ALTER TABLE "CompetenciaArea" ADD CONSTRAINT "CompetenciaArea_codCompet_fkey" FO
 
 -- AddForeignKey
 ALTER TABLE "CompetenciaArea" ADD CONSTRAINT "CompetenciaArea_codArea_fkey" FOREIGN KEY ("codArea") REFERENCES "Area"("codArea") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "AreaGrado" ADD CONSTRAINT "AreaGrado_codArea_fkey" FOREIGN KEY ("codArea") REFERENCES "Area"("codArea") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "AreaGrado" ADD CONSTRAINT "AreaGrado_codGrado_fkey" FOREIGN KEY ("codGrado") REFERENCES "Grado"("codGrado") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "GradoNivel" ADD CONSTRAINT "GradoNivel_codGrado_fkey" FOREIGN KEY ("codGrado") REFERENCES "Grado"("codGrado") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "GradoNivel" ADD CONSTRAINT "GradoNivel_codNivel_fkey" FOREIGN KEY ("codNivel") REFERENCES "Nivel"("codNivel") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Notificacion" ADD CONSTRAINT "Notificacion_codPer_fkey" FOREIGN KEY ("codPer") REFERENCES "Persona"("codPer") ON DELETE RESTRICT ON UPDATE CASCADE;

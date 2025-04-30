@@ -105,6 +105,7 @@ npx prisma migrate deploy
 
 ```
 node ./src/base/seed.js
+node ./src/base/seedAcademicCatalog.js
 node ./src/base/seed-extended.js
 node ./src/base/seed-last.js
 

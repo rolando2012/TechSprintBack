@@ -36,95 +36,72 @@ const getAreas = async (req, res) => {
     res.json(areas);
 }
 
-// Supongamos que codCompet en la tabla competencia coincide con codGrado
 const getGradosNivel = async (req, res) => {
-    console.log(req.params.area);
-    const gestion = parseInt(req.params.gestion, 10);
+    const { area: nombreArea, gestion: gestionParam } = req.params;
+    const gestion = parseInt(gestionParam, 10);
     if (isNaN(gestion)) {
-        return res.status(400).json({ message: 'El parámetro gestión debe ser un número entero.' });
+      return res.status(400).json({ message: 'La gestión debe ser un número entero.' });
     }
-
-    const idArea = await prisma.area.findFirst({
-        where: {
-            nombreArea: req.params.area,
-        },
-        select: {
-            codArea: true,
-        },
+  
+    // 1. Área
+    const areaRec = await prisma.area.findUnique({ where: { nombreArea } });
+    if (!areaRec) return res.status(404).json({ message: 'Área no encontrada' });
+  
+    // 2. Grados numéricos
+    const grados = await prisma.areaGrado.findMany({
+      where: { codArea: areaRec.codArea },
+      include: { grado: true }
     });
-    if (!idArea) {
-        return res.status(404).json({ message: 'Área no encontrada' });
-    }
-
-    // 1. Traigo los grados por área con su nivel
-    const gradosPorArea = await prisma.areaGrado.findMany({
-    select: {
-        codArea: true,
-        codGrado: true,
-        grado: {
-            select: {
-            nombreGrado: true,
-            gradosNivel: {
-                select: {
-                codNivel: true,
-                nivel: {
-                  select: {
-                    nombreNivel: true,
-                },
-                },
-            },
-            },
-        },
-        },
-    },
-    where:{
-        codArea: idArea.codArea,
-    }
+  
+    // 3. Niveles especiales
+    const niveles = await prisma.nivelEspecial.findMany({
+      where: { codArea: areaRec.codArea }
     });
-
-    // 2. Traigo los costos de competencias para esta gestión
+  
+    // 4. Precios por gestión
     const costos = await prisma.competencia.findMany({
-        where: { gestion },
-        select: { gestion: true, costo: true },
+      where: { gestion },
+      select: { gestion: true, costo: true }
     });
-
-    // 3. Construyo un mapa codCompet → costo
     const mapaCostos = new Map(costos.map(c => [c.gestion, c.costo]));
-
-    // 4. Transformo la estructura de salida
-    const resultado = gradosPorArea.reduce((acc, { codArea, codGrado, grado }) => {
-      // Inicializo si no existe aún
-        if (!acc[codArea]) {
-        acc[codArea] = {
-            codArea,
-            primary: [],
-            secondary: []
-        };
-        }
-
-      // Para cada nivel asignado al grado
-        grado.gradosNivel.forEach(({ codNivel, nivel: { nombreNivel } }) => {
-        // Determino si va a primary o secondary
-        const bucket = grado.nombreGrado.toLowerCase().includes("primaria") ? 'primary' : 'secondary';
-        const price = mapaCostos.get(gestion) ?? 0; // ajusta la clave si tu costo se basa en otro código
-
-        acc[codArea][bucket].push({
-            codGrado,
-            grade: grado.nombreGrado,
-            level: nombreNivel,
-            price,
-            codNivel
-        });
-        });
-
-        return acc;
-    }, {});
-
-    // 5. Convierto a array
-    const salida = Object.values(resultado);
-
+  
+    // 5. Clasificar y construir respuesta
+    const salida = { codArea: areaRec.codArea, primary: [], secondary: [] };
+  
+    // 5.a. Grados regulares
+    for (const { grado } of grados) {
+      const isPrim = grado.ciclo === 'PRIMARIA';
+      const suf = isPrim ? 'Primaria' : 'Secundaria';
+      const gradeLabel = `${grado.numero}ro ${suf}`;
+      const levelCode = `${grado.numero}${isPrim ? 'P' : 'S'}`;
+      const price = mapaCostos.get(gestion) ?? 0;
+      const bucket = isPrim ? 'primary' : 'secondary';
+  
+      salida[bucket].push({
+        codGrado: grado.codGrado,
+        grade: gradeLabel,
+        level: levelCode,
+        price
+      });
+    }
+  
+    // 5.b. Niveles especiales
+    for (const ne of niveles) {
+      const isPrim = ne.gradoRange.toLowerCase().includes('primaria');
+      const price = mapaCostos.get(gestion) ?? 0;
+      const bucket = isPrim ? 'primary' : 'secondary';
+  
+      salida[bucket].push({
+        codNivel: ne.codNivel,
+        grade: ne.nombreNivel,
+        level: ne.nombreNivel,
+        price,
+        rango: ne.gradoRange
+      });
+    }
+  
     res.json(salida);
-};
+  };
 
 const getTutores = async (req, res) => {
     const tutores = await prisma.tutor.findMany({
