@@ -1,10 +1,11 @@
 const app = require('./app');
-const port = app.get('port')
+const port = 4000; // Cambia el puerto a 4000 si es necesario
 
 app.get('/', (req, res) => {
-    res.send('Servidor de TechSprint Encendido');
+  // Enviar una respuesta JSON
+  res.json({ mensaje: "Servidor de TechSprint Encendido" });
 });
 
 app.listen(port, () => {
-   console.log(`Servidor ejecutando en http://localhost:${port}`); 
+  console.log(`Servidor ejecutándose en http://localhost:${port}`);
 });
