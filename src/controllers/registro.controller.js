@@ -148,137 +148,169 @@ const getTutores = async (req, res) => {
 
 const regCompetidor = async (req, res) => {
     try {
-        // 0) Recuperar la competencia (puedes filtrar por gestión o por nombre)
-    const comp = await prisma.competencia.findUnique({
-        where: { nombreCompet: 'Olimpiada de Ciencia y Tecnología' }
-        // o bien: where: { gestion: 2025 }
+      // 0) Cargar la competencia activa
+      const comp = await prisma.competencia.findFirst({
+        where: { gestion: 2025 }
       });
-      if (!comp) throw new Error('Competencia no encontrada');
+      if (!comp) throw new Error('Competencia no encontrada para gestión 2025');
   
       // 1) Desestructurar body
-        const { persona, fechaNac, codMun, colegio, grado, nivel, tutorId, area: nombreArea } = req.body;
-    
-        // 2) Crear o actualizar Persona
-        const per = await prisma.persona.upsert({
-          where: { carnet: persona.carnet },
-          update: { ...persona },
-          create: persona
-        });
-    
-        // 3) Crear usuario (UserN) con contraseña por defecto y rol Competidor
-        const hashed = await bcrypt.hash('1234', 10);
-        const user = await prisma.userN.upsert({
-          where: { codPer: per.codPer },
-          update: { passwUser: hashed, codSis: 'TS-COMP' },
-          create: { codPer: per.codPer, passwUser: hashed, codSis: 'TS-COMP' }
-        });
-        await prisma.userNRol.upsert({
-          where: {
-            codUserN_codRol: { codUserN: user.codUserN, codRol: /* Competidor role ID */ 4 }
-          },
-          update: {},
-          create: { codUserN: user.codUserN, codRol: /* Competidor role ID */ 4 }
-        });
-    
-        // 3) Find area
-    const areaRec = await prisma.area.findUnique({ where: { nombreArea } });
-    if (!areaRec) throw new Error(`Área no encontrada: ${nombreArea}`);
-    let codModal;    // <— IMPORTANTE: declarar antes de usar
-    let nivelVal;
-// 1. Extraer número y ciclo de nivel (p.ej. "3ro Primaria")
-const mMatch = nivel.match(/^(\d+)(?:ro|to)?\s+(Primaria|Secundaria)$/i);
-if (mMatch) {
-  const numero = parseInt(mMatch[1], 10);
-  const ciclo  = mMatch[2].toUpperCase(); // "PRIMARIA" o "SECUNDARIA"
-  nivelVal = numero;
-
-  // 1.a) Intento modalidad regular
-  const gradoRec = await prisma.grado.findUnique({
-    where: { numero_ciclo: { numero, ciclo } }
-  });
-  if (gradoRec) {
-    const modalReg = await prisma.modalidadCompetencia.findFirst({
-      where: {
-        codCompet: comp.codCompet,
-        codArea:   areaRec.codArea,
-        codGrado:  gradoRec.codGrado
-      }
-    });
-    if (modalReg) codModal = modalReg.codModal;
-  }
-
-  // 1.b) Si no hay regular, fallback a rango
-  if (!codModal) {
-    const especiales = await prisma.nivelEspecial.findMany({
-      where: { codArea: areaRec.codArea }
-    });
-    for (const e of especiales) {
-      const r = e.gradoRange.match(/^(\d+)\D*a\D*(\d+)\D*(Primaria|Secundaria)$/i);
-      if (!r) continue;
-      const [_, lowS, highS, catRange] = r;
-      const low  = parseInt(lowS, 10);
-      const high = parseInt(highS, 10);
-      if (numero >= low && numero <= high && catRange.toUpperCase() === ciclo) {
-        nivelVal = e.codNivel;
-        const modalEsp = await prisma.modalidadCompetencia.findFirst({
-          where: {
-            codCompet:        comp.codCompet,
-            codArea:          areaRec.codArea,
-            codNivelEspecial: e.codNivel
-          }
-        });
-        codModal = modalEsp?.codModal;
-        break;
-      }
-    }
-    if (!codModal) {
-      throw new Error(`No se encontró modalidad para ${nivel} en ${areaRec.nombreArea}`);
-    }
-  }
-
-} else {
-  throw new Error(`Formato de nivel inválido: ${nivel}`);
-}
-
-// ... luego usas nivelVal y codModal para upsert Competidor e Inscripcion
-
-
-    // 5) Upsert Competidor
-    const compRec = await prisma.competidor.upsert({
-      where: { codPer: per.codPer },
-      create: {
-        codPer:   per.codPer,
-        fechaNac: new Date(fechaNac),
+      const {
+        persona,
+        fechaNac,
         codMun,
         colegio,
         grado,
-        nivel: nivelVal
-      },
-      update: {
-        fechaNac: new Date(fechaNac),
-        codMun,
-        colegio,
-        nivel: nivelVal
+        nivel,
+        tutorId,
+        area: nombreArea
+      } = req.body;
+  
+      // 2) Upsert Persona
+      const per = await prisma.persona.upsert({
+        where: { carnet: persona.carnet },
+        update: { ...persona },
+        create: { ...persona }
+      });
+  
+      // 3) Upsert UserN y asignar rol Competidor
+      const passwHash = await bcrypt.hash('1234', 10);
+      const user = await prisma.userN.upsert({
+        where: { codPer: per.codPer },
+        update: { passwUser: passwHash, codSis: 'TS-COMP' },
+        create: { codPer: per.codPer, passwUser: passwHash, codSis: 'TS-COMP' }
+      });
+      await prisma.userNRol.upsert({
+        where: {
+          codUserN_codRol: {
+            codUserN: user.codUserN,
+            codRol:   /* reemplaza con tu codRol de Competidor */ 4
+          }
+        },
+        update: {},
+        create: {
+          codUserN: user.codUserN,
+          codRol:   /* mismo codRol */ 4
+        }
+      });
+  
+      // 4) Buscar el área
+      const areaRec = await prisma.area.findUnique({
+        where: { nombreArea }
+      });
+      if (!areaRec) throw new Error(`Área no encontrada: ${nombreArea}`);
+  
+      // 5) Determinar codModal y nivelVal
+      let codModal;
+      let nivelVal;
+  
+      // 5.a) Intento modalidad regular (niveles tipo "3ro Primaria", "4to Secundaria" o códigos "3P","4S"...)
+      const m = nivel.match(/^(\d+)(?:ro|to)?\s+(Primaria|Secundaria)$/i);
+      if (m) {
+        const numero = parseInt(m[1], 10);
+        const ciclo  = m[2].toUpperCase(); // "PRIMARIA" | "SECUNDARIA"
+        nivelVal = numero;
+  
+        // Buscar Grado
+        const gradoRec = await prisma.grado.findUnique({
+          where: { numero_ciclo: { numero, ciclo } }
+        });
+        if (gradoRec) {
+          // Buscar ModalidadCompetencia regular
+          const modalReg = await prisma.modalidadCompetencia.findFirst({
+            where: {
+              codCompet: comp.codCompet,
+              codArea:   areaRec.codArea,
+              codGrado:  gradoRec.codGrado
+            }
+          });
+          if (modalReg) codModal = modalReg.codModal;
+        }
       }
-    });
-
-    // 6) Crear Inscripción con el codModal encontrado
-    const ins = await prisma.inscripcion.create({
-      data: {
-        codModal,
-        codTutor:          tutorId,
-        codCompet:         comp.codCompet,
-        estadoInscripcion: 'Pendiente',
-        fechaInscripcion:  new Date()
+  
+      // 5.b) Si no hay modalidad regular, fallback a nivelEspecial
+      if (!codModal) {
+        // Buscar nivelEspecial por nombre exacto
+        let ne = await prisma.nivelEspecial.findUnique({
+          where: { nombreNivel: nivel }
+        });
+  
+        // Si no existe por nombre, buscar por rango en gradoRange
+        if (!ne) {
+          const especiales = await prisma.nivelEspecial.findMany({
+            where: { codArea: areaRec.codArea }
+          });
+          ne = especiales.find(e => {
+            // Compara insensiblemente y busca coincidencia
+            return (
+              e.nombreNivel.toLowerCase() === nivel.toLowerCase() ||
+              e.gradoRange.toLowerCase().includes(nivel.toLowerCase())
+            );
+          });
+        }
+  
+        if (!ne) {
+          throw new Error(`No existe nivelEspecial para '${nivel}' en ${nombreArea}`);
+        }
+  
+        nivelVal = ne.codNivel;
+  
+        // Buscar o crear ModalidadCompetencia para este nivelEspecial
+        let modalEsp = await prisma.modalidadCompetencia.findFirst({
+          where: {
+            codCompet:        comp.codCompet,
+            codArea:          areaRec.codArea,
+            codNivelEspecial: ne.codNivel
+          }
+        });
+        if (!modalEsp) {
+          modalEsp = await prisma.modalidadCompetencia.create({
+            data: {
+              codCompet:        comp.codCompet,
+              codArea:          areaRec.codArea,
+              codNivelEspecial: ne.codNivel
+            }
+          });
+        }
+        codModal = modalEsp.codModal;
       }
-    });
-
-    return res.status(201).json({ competidor: compRec, inscripcion: ins });
-  } catch (error) {
-    console.error(error);
-    return res.status(400).json({ error: error.message });
-  }
-};
+  
+      // 6) Upsert Competidor
+      const compRec = await prisma.competidor.upsert({
+        where: { codPer: per.codPer },
+        create: {
+          codPer:   per.codPer,
+          fechaNac: new Date(fechaNac),
+          codMun,
+          colegio,
+          grado,
+          nivel: nivelVal
+        },
+        update: {
+          fechaNac: new Date(fechaNac),
+          codMun,
+          colegio,
+          nivel: nivelVal
+        }
+      });
+  
+      // 7) Crear Inscripción
+      const ins = await prisma.inscripcion.create({
+        data: {
+          codModal,
+          codTutor:          tutorId,
+          codCompet:         comp.codCompet,
+          estadoInscripcion: 'Pendiente',
+          fechaInscripcion:  new Date()
+        }
+      });
+  
+      return res.status(201).json({ competidor: compRec, inscripcion: ins });
+    } catch (error) {
+      console.error('[regCompetidor]', error);
+      return res.status(400).json({ error: error.message });
+    }
+  };
 
 module.exports = {
     getDepartamentos,
