@@ -108,6 +108,11 @@ const getTutores = async (req, res) => {
         select:{
             codPer: true,
             codTut: true,
+            area: {
+                select:{
+                    nombreArea: true,
+                }
+            },
             persona:{
                 select:{
                     nombre: true,
@@ -119,9 +124,10 @@ const getTutores = async (req, res) => {
     });
 
     // Aplanamos cada objeto combinando los datos de tutor y persona
-    const flattenedTutores = tutores.map(({ codPer, codTut, persona }) => ({
+    const flattenedTutores = tutores.map(({ codPer, codTut, area, persona }) => ({
         codPer,
         codTut,
+        ...area,
         ...persona
     }));
 
