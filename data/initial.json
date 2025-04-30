@@ -11,14 +11,10 @@
         "codSis": "TS2"
       }
     ],
-    "tutores": [
-      { "persona": { "nombre": "Vladimir", "apellidoPaterno": "Costas", "apellidoMaterno": "Rojas", "celular": "70123458", "email": "tutora@techsprint.com", "carnet": "TUT1" }, "codMun": 1 },
-      { "persona": { "nombre": "Hustariz", "apellidoPaterno": "Montan", "apellidoMaterno": "Mamani", "celular": "70123459", "email": "tutorb@techsprint.com", "carnet": "TUT2" }, "codMun": 2 },
-      { "persona": { "nombre": "Carmen", "apellidoPaterno": "Rosa", "apellidoMaterno": "Perez", "celular": "70123460", "email": "tutorc@techsprint.com", "carnet": "TUT3" }, "codMun": 3 }
-    ],
+   
     "competidores": [
-      { "persona": { "nombre": "Juan", "apellidoPaterno": "Andres", "apellidoMaterno": "Saes", "celular": "70123461", "email": "comp1@techsprint.com", "carnet": "C01" }, "fechaNac": "2014-05-01", "codMun": 1, "colegio": "Escuela A", "grado": "Primaria", "nivel": "3P", "tutorEmail": "tutora@techsprint.com" },
-      { "persona": { "nombre": "Maria", "apellidoPaterno": "Rosario", "apellidoMaterno": "Lloret", "celular": "70123462", "email": "comp2@techsprint.com", "carnet": "C02" }, "fechaNac": "2013-07-15", "codMun": 2, "colegio": "Escuela B", "grado": "Primaria", "nivel": "4P", "tutorEmail": "tutorb@techsprint.com" },
-      { "persona": { "nombre": "Carlos", "apellidoPaterno": "Alcala", "apellidoMaterno": "Primo", "celular": "70123463", "email": "comp3@techsprint.com", "carnet": "C03" }, "fechaNac": "2012-09-20", "codMun": 3, "colegio": "Escuela C", "grado": "Primaria", "nivel": "5P", "tutorEmail": "tutorc@techsprint.com" }
+      { "persona": { "nombre": "Juan", "apellidoPaterno": "Andres", "apellidoMaterno": "Saes", "celular": "70123461", "email": "comp1@techsprint.com", "carnet": "C01" }, "fechaNac": "2014-05-01", "codMun": 1, "colegio": "Escuela A", "grado": "Primaria", "nivel": "Tercer Nivel", "tutorEmail": "juan.terrazas@fcyt.umss.edu.bo" },
+      { "persona": { "nombre": "Maria", "apellidoPaterno": "Rosario", "apellidoMaterno": "Lloret", "celular": "70123462", "email": "comp2@techsprint.com", "carnet": "C02" }, "fechaNac": "2013-07-15", "codMun": 2, "colegio": "Escuela B", "grado": "Primaria", "nivel": "Cuarto Nivel", "tutorEmail": "e.fernandez@umss.edu" },
+      { "persona": { "nombre": "Carlos", "apellidoPaterno": "Alcala", "apellidoMaterno": "Primo", "celular": "70123463", "email": "comp3@techsprint.com", "carnet": "C03" }, "fechaNac": "2012-09-20", "codMun": 3, "colegio": "Escuela C", "grado": "Primaria", "nivel": "Quinto Nivel", "tutorEmail": "markoandrade.u@fcyt.umss.edu.bo" }
     ]
   }

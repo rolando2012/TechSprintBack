@@ -16,256 +16,258 @@ datasource db {
 
 // Enum para distinguir Primaria y Secundaria
 enum Ciclo {
-PRIMARIA
-SECUNDARIA
+  PRIMARIA
+  SECUNDARIA
 }
 
 model Departamento {
-codDept     Int           @id @default(autoincrement()) @db.Integer
-nombreDept  String        @unique                       @db.VarChar(50)
-municipios  Municipio[]
+  codDept    Int         @id @default(autoincrement()) @db.Integer
+  nombreDept String      @unique @db.VarChar(50)
+  municipios Municipio[]
 }
 
 model Municipio {
-codMun      Int           @id @default(autoincrement()) @db.Integer
-nombreMun   String        @db.VarChar(50)
-codDept     Int           @db.Integer
-departamento Departamento  @relation(fields: [codDept], references: [codDept])
-tutores     Tutor[]
-competidors Competidor[]
+  codMun       Int          @id @default(autoincrement()) @db.Integer
+  nombreMun    String       @db.VarChar(50)
+  codDept      Int          @db.Integer
+  departamento Departamento @relation(fields: [codDept], references: [codDept])
+  tutores      Tutor[]
+  competidors  Competidor[]
 
-@@unique([nombreMun, codDept], name: "nombreMun_codDept")
+  @@unique([nombreMun, codDept], name: "nombreMun_codDept")
 }
 
 model Persona {
-codPer            Int                @id @default(autoincrement()) @db.Integer
-nombre            String             @db.VarChar(30)
-apellidoPaterno   String             @db.VarChar(30)
-apellidoMaterno   String?            @db.VarChar(30)
-celular           String?            @db.VarChar(8)
-email             String?            @unique @db.VarChar(89)
-carnet            String             @unique @db.VarChar(10)
+  codPer          Int     @id @default(autoincrement()) @db.Integer
+  nombre          String  @db.VarChar(30)
+  apellidoPaterno String  @db.VarChar(30)
+  apellidoMaterno String? @db.VarChar(30)
+  celular         String? @db.VarChar(8)
+  email           String? @unique @db.VarChar(89)
+  carnet          String  @unique @db.VarChar(10)
 
-administrador     Administrador?
-cajero            Cajero?
-tutor             Tutor?
-userN             UserN?
-competidor        Competidor?
-notificaciones    Notificacion[]
+  administrador  Administrador?
+  cajero         Cajero?
+  tutor          Tutor?
+  userN          UserN?
+  competidor     Competidor?
+  notificaciones Notificacion[]
 }
 
 model Administrador {
-codAdm   Int      @id @default(autoincrement()) @db.Integer
-codPer   Int      @unique                      @db.Integer
-persona  Persona  @relation(fields: [codPer], references: [codPer])
+  codAdm  Int     @id @default(autoincrement()) @db.Integer
+  codPer  Int     @unique @db.Integer
+  persona Persona @relation(fields: [codPer], references: [codPer])
 }
 
 model Cajero {
-codCaj   Int      @id @default(autoincrement()) @db.Integer
-codPer   Int      @unique                      @db.Integer
-persona  Persona  @relation(fields: [codPer], references: [codPer])
+  codCaj  Int     @id @default(autoincrement()) @db.Integer
+  codPer  Int     @unique @db.Integer
+  persona Persona @relation(fields: [codPer], references: [codPer])
 }
 
 model Tutor {
-codTut       Int           @id @default(autoincrement()) @db.Integer
-codPer       Int           @unique                      @db.Integer
-institucion  String        @db.VarChar(100)
-codMun       Int           @db.Integer
+  codTut      Int    @id @default(autoincrement()) @db.Integer
+  codPer      Int    @unique @db.Integer
+  institucion String @db.VarChar(100)
+  codMun      Int    @db.Integer
+  codArea     Int    @db.Integer
+  area        Area   @relation(fields: [codArea], references: [codArea])
 
-persona      Persona       @relation(fields: [codPer], references: [codPer])
-municipio    Municipio     @relation(fields: [codMun], references: [codMun])
-inscripciones Inscripcion[]
+  persona       Persona       @relation(fields: [codPer], references: [codPer])
+  municipio     Municipio     @relation(fields: [codMun], references: [codMun])
+  inscripciones Inscripcion[]
 }
 
 model UserN {
-codUserN   Int         @id @default(autoincrement()) @db.Integer
-codPer     Int         @unique                      @db.Integer
-passwUser  String      @db.VarChar(60)
-codSis     String      @db.VarChar(10)
+  codUserN  Int    @id @default(autoincrement()) @db.Integer
+  codPer    Int    @unique @db.Integer
+  passwUser String @db.VarChar(60)
+  codSis    String @db.VarChar(10)
 
-persona    Persona     @relation(fields: [codPer], references: [codPer])
-roles      UserNRol[]
+  persona Persona    @relation(fields: [codPer], references: [codPer])
+  roles   UserNRol[]
 }
 
 model Rol {
-codRol    Int         @id @default(autoincrement()) @db.Integer
-nombreRol String      @unique                      @db.VarChar(20)
-userNRol  UserNRol[]
+  codRol    Int        @id @default(autoincrement()) @db.Integer
+  nombreRol String     @unique @db.VarChar(20)
+  userNRol  UserNRol[]
 }
 
 model UserNRol {
-codUserN Int      @db.Integer
-codRol   Int      @db.Integer
+  codUserN Int @db.Integer
+  codRol   Int @db.Integer
 
-userN    UserN    @relation(fields: [codUserN], references: [codUserN])
-rol      Rol      @relation(fields: [codRol], references: [codRol])
+  userN UserN @relation(fields: [codUserN], references: [codUserN])
+  rol   Rol   @relation(fields: [codRol], references: [codRol])
 
-@@id([codUserN, codRol])
+  @@id([codUserN, codRol])
 }
 
 // Catálogo académico
 model Area {
-codArea            Int                     @id @default(autoincrement()) @db.Integer
-nombreArea         String                  @unique                      @db.VarChar(30)
-areaGrado          AreaGrado[]
-modalidades        ModalidadCompetencia[]
-competenciaAreas   CompetenciaArea[]
-nivelesEspeciales  NivelEspecial[]        // Back-relation para niveles especiales
+  codArea           Int                    @id @default(autoincrement()) @db.Integer
+  nombreArea        String                 @unique @db.VarChar(30)
+  areaGrado         AreaGrado[]
+  modalidades       ModalidadCompetencia[]
+  competenciaAreas  CompetenciaArea[]
+  nivelesEspeciales NivelEspecial[]
+  tutors            Tutor[]
 }
 
 model Grado {
-codGrado    Int       @id @default(autoincrement()) @db.Integer
-numero      Int
-ciclo       Ciclo
+  codGrado Int   @id @default(autoincrement()) @db.Integer
+  numero   Int
+  ciclo    Ciclo
 
-areaGrado   AreaGrado[]
-modalidades ModalidadCompetencia[]
+  areaGrado   AreaGrado[]
+  modalidades ModalidadCompetencia[]
 
-@@unique([numero, ciclo])
+  @@unique([numero, ciclo])
 }
 
 model AreaGrado {
-codArea  Int      @db.Integer
-codGrado Int      @db.Integer
+  codArea  Int @db.Integer
+  codGrado Int @db.Integer
 
-area    Area  @relation(fields: [codArea], references: [codArea])
-grado   Grado @relation(fields: [codGrado], references: [codGrado])
+  area  Area  @relation(fields: [codArea], references: [codArea])
+  grado Grado @relation(fields: [codGrado], references: [codGrado])
 
-@@id([codArea, codGrado])
+  @@id([codArea, codGrado])
 }
 
 // Niveles especiales para áreas como Informática o Robótica
 model NivelEspecial {
-  codNivel     Int                    @id @default(autoincrement()) @db.Integer
-  nombreNivel  String                 @unique                      @db.VarChar(30)
-  gradoRange   String                 @db.VarChar(30)              // ej. "5to a 6to Primaria"
-  codArea      Int                    @db.Integer
+  codNivel    Int    @id @default(autoincrement()) @db.Integer
+  nombreNivel String @unique @db.VarChar(30)
+  gradoRange  String @db.VarChar(30) // ej. "5to a 6to Primaria"
+  codArea     Int    @db.Integer
 
-  area         Area                   @relation(fields: [codArea], references: [codArea])
-  modalidades  ModalidadCompetencia[] // si lo usas en algún punto
+  area        Area                   @relation(fields: [codArea], references: [codArea])
+  modalidades ModalidadCompetencia[] // si lo usas en algún punto
 }
 
-
 model Competencia {
-codCompet     Int                   @id @default(autoincrement()) @db.Integer
-nombreCompet  String                @unique @db.VarChar(100)
-fechaIni      DateTime              @db.Date
-fechaFin      DateTime              @db.Date
-horaIniIns    DateTime              @db.Time
-horaFinIns    DateTime              @db.Time
-costo         Float                 @db.DoublePrecision
-gestion       Int                   @db.Integer
+  codCompet    Int      @id @default(autoincrement()) @db.Integer
+  nombreCompet String   @unique @db.VarChar(100)
+  fechaIni     DateTime @db.Date
+  fechaFin     DateTime @db.Date
+  horaIniIns   DateTime @db.Time
+  horaFinIns   DateTime @db.Time
+  costo        Float    @db.DoublePrecision
+  gestion      Int      @db.Integer
 
-modalidades   ModalidadCompetencia[]
-inscripciones Inscripcion[]
-etapas        EtapaCompetencia[]
-areas         CompetenciaArea[]
-compCampObl   CompCampObl[]
+  modalidades   ModalidadCompetencia[]
+  inscripciones Inscripcion[]
+  etapas        EtapaCompetencia[]
+  areas         CompetenciaArea[]
+  compCampObl   CompCampObl[]
 }
 
 model ModalidadCompetencia {
-codModal         Int                 @id @default(autoincrement()) @db.Integer
-codCompet        Int                 @db.Integer
-codArea          Int                 @db.Integer
-codGrado         Int?                @db.Integer
-codNivelEspecial Int?                @db.Integer
+  codModal         Int  @id @default(autoincrement()) @db.Integer
+  codCompet        Int  @db.Integer
+  codArea          Int  @db.Integer
+  codGrado         Int? @db.Integer
+  codNivelEspecial Int? @db.Integer
 
-competencia      Competencia         @relation(fields: [codCompet], references: [codCompet])
-area             Area                @relation(fields: [codArea], references: [codArea])
-grado            Grado?              @relation(fields: [codGrado], references: [codGrado])
-nivelEspecial    NivelEspecial?      @relation(fields: [codNivelEspecial], references: [codNivel])
-inscripciones    Inscripcion[]
+  competencia   Competencia    @relation(fields: [codCompet], references: [codCompet])
+  area          Area           @relation(fields: [codArea], references: [codArea])
+  grado         Grado?         @relation(fields: [codGrado], references: [codGrado])
+  nivelEspecial NivelEspecial? @relation(fields: [codNivelEspecial], references: [codNivel])
+  inscripciones Inscripcion[]
 
-@@index([codGrado])
-@@index([codNivelEspecial])
+  @@index([codGrado])
+  @@index([codNivelEspecial])
 }
 
 model Inscripcion {
-codIns            Int      @id @default(autoincrement()) @db.Integer
-codModal          Int      @db.Integer
-codTutor          Int      @db.Integer
-codCompet         Int      @db.Integer
-estadoInscripcion String   @db.VarChar(10)
-fechaInscripcion  DateTime @db.Date
+  codIns            Int      @id @default(autoincrement()) @db.Integer
+  codModal          Int      @db.Integer
+  codTutor          Int      @db.Integer
+  codCompet         Int      @db.Integer
+  estadoInscripcion String   @db.VarChar(10)
+  fechaInscripcion  DateTime @db.Date
 
-modalidad         ModalidadCompetencia @relation(fields: [codModal], references: [codModal])
-tutor             Tutor                @relation(fields: [codTutor], references: [codTut])
-competencia       Competencia          @relation(fields: [codCompet], references: [codCompet])
-pagos             Pago[]
+  modalidad   ModalidadCompetencia @relation(fields: [codModal], references: [codModal])
+  tutor       Tutor                @relation(fields: [codTutor], references: [codTut])
+  competencia Competencia          @relation(fields: [codCompet], references: [codCompet])
+  pagos       Pago[]
 }
 
 model Competidor {
-codComp   Int      @id @default(autoincrement()) @db.Integer
-codPer    Int      @unique                      @db.Integer
-fechaNac  DateTime @db.Date
-codMun    Int      @db.Integer
-colegio   String   @db.VarChar(100)
-grado     String   @db.VarChar(10)
-nivel     Int      @db.Integer
+  codComp  Int      @id @default(autoincrement()) @db.Integer
+  codPer   Int      @unique @db.Integer
+  fechaNac DateTime @db.Date
+  codMun   Int      @db.Integer
+  colegio  String   @db.VarChar(100)
+  grado    String   @db.VarChar(10)
+  nivel    Int      @db.Integer
 
-persona   Persona  @relation(fields: [codPer], references: [codPer])
-municipio Municipio @relation(fields: [codMun], references: [codMun])
+  persona   Persona   @relation(fields: [codPer], references: [codPer])
+  municipio Municipio @relation(fields: [codMun], references: [codMun])
 }
 
 model CamposObligatorios {
-codCamp       Int             @id @default(autoincrement()) @db.Integer
-nombreCampObl String          @unique                       @db.VarChar(30)
-compCampObl   CompCampObl[]
+  codCamp       Int           @id @default(autoincrement()) @db.Integer
+  nombreCampObl String        @unique @db.VarChar(30)
+  compCampObl   CompCampObl[]
 }
 
 model CompCampObl {
-codCompet Int      @db.Integer
-codCamp   Int      @db.Integer
+  codCompet Int @db.Integer
+  codCamp   Int @db.Integer
 
-competencia Competencia        @relation(fields: [codCompet], references: [codCompet])
-campoObl    CamposObligatorios @relation(fields: [codCamp], references: [codCamp])
+  competencia Competencia        @relation(fields: [codCompet], references: [codCompet])
+  campoObl    CamposObligatorios @relation(fields: [codCamp], references: [codCamp])
 
-@@id([codCompet, codCamp])
+  @@id([codCompet, codCamp])
 }
 
 model EtapaCompetencia {
-codEtapa       Int      @id @default(autoincrement()) @db.Integer
-codCompetencia Int      @db.Integer
-nombreEtapa    String   @db.VarChar(50)
-descripcion    String?  @db.VarChar(255)
-fechaInicio    DateTime @db.Date
-horaInicio     DateTime @db.Time
-fechaFin       DateTime @db.Date
-horaFin        DateTime @db.Time
-orden          Int      @db.Integer
-estado         String   @db.VarChar(10)
+  codEtapa       Int      @id @default(autoincrement()) @db.Integer
+  codCompetencia Int      @db.Integer
+  nombreEtapa    String   @db.VarChar(50)
+  descripcion    String?  @db.VarChar(255)
+  fechaInicio    DateTime @db.Date
+  horaInicio     DateTime @db.Time
+  fechaFin       DateTime @db.Date
+  horaFin        DateTime @db.Time
+  orden          Int      @db.Integer
+  estado         String   @db.VarChar(10)
 
-competencia    Competencia @relation(fields: [codCompetencia], references: [codCompet])
+  competencia Competencia @relation(fields: [codCompetencia], references: [codCompet])
 }
 
 model CompetenciaArea {
-codCompet Int      @db.Integer
-codArea   Int      @db.Integer
+  codCompet Int @db.Integer
+  codArea   Int @db.Integer
 
-competencia Competencia @relation(fields: [codCompet], references: [codCompet])
-area        Area        @relation(fields: [codArea], references: [codArea])
+  competencia Competencia @relation(fields: [codCompet], references: [codCompet])
+  area        Area        @relation(fields: [codArea], references: [codArea])
 
-@@id([codCompet, codArea])
+  @@id([codCompet, codArea])
 }
 
 model Notificacion {
-codNot      Int      @id @default(autoincrement()) @db.Integer
-codPer      Int      @db.Integer
-titulo      String   @db.VarChar(30)
-descripcion String   @db.VarChar(100)
-estado      String   @db.VarChar(10)
-tipoNot     String   @db.VarChar(10)
-fechaEnvio  DateTime @db.Date @default(now())
+  codNot      Int      @id @default(autoincrement()) @db.Integer
+  codPer      Int      @db.Integer
+  titulo      String   @db.VarChar(30)
+  descripcion String   @db.VarChar(100)
+  estado      String   @db.VarChar(10)
+  tipoNot     String   @db.VarChar(10)
+  fechaEnvio  DateTime @default(now()) @db.Date
 
-persona     Persona  @relation(fields: [codPer], references: [codPer])
+  persona Persona @relation(fields: [codPer], references: [codPer])
 }
 
 model Pago {
-codPago    Int      @id @default(autoincrement()) @db.Integer
-codIns     Int      @db.Integer
-estadoPago String   @db.VarChar(10)
-monto      Float    @db.DoublePrecision
-fechaPago  DateTime @db.Date
+  codPago    Int      @id @default(autoincrement()) @db.Integer
+  codIns     Int      @db.Integer
+  estadoPago String   @db.VarChar(10)
+  monto      Float    @db.DoublePrecision
+  fechaPago  DateTime @db.Date
 
-inscripcion Inscripcion @relation(fields: [codIns], references: [codIns])
+  inscripcion Inscripcion @relation(fields: [codIns], references: [codIns])
 }

@@ -59,10 +59,34 @@ async function main() {
     }
   }
 
-  // 4) Tutores
+  // 4) Tutores (asignados por área con contacto)
+  // Definimos tutores fijos para cada área
+  const tutorInfos = [
+    { area: 'Astronomía - astrofísica', nombre: 'Juan Carlos Terrazas Vargas', email: 'juan.terrazas@fcyt.umss.edu.bo' },
+    { area: 'Biología', nombre: 'Erika Fernández', email: 'e.fernandez@umss.edu' },
+    { area: 'Física', nombre: 'Marko Andrade', email: 'markoandrade.u@fcyt.umss.edu.bo' },
+    { area: 'Informática', nombre: 'Vladimir Costas', email: 'vladimircostas.j@fcyt.umss.edu.bo' },
+    { area: 'Matemáticas', nombre: 'Vidal Matias', email: 'v.matias@fcyt.umss.edu' },
+    { area: 'Química', nombre: 'Boris Moreira', email: 'borismoreira.r@fcyt.umss.edu.bo' }
+  ];
+
   const tutorMap = {};
-  for (const t of data.tutores) {
-    const per = await prisma.persona.upsert({ where: { carnet: t.persona.carnet }, create: t.persona, update: {} });
+  let codTut = 1; 
+  for (const info of tutorInfos) {
+    // Desglosar nombre completo en campos persona
+    const [nombre, ...apellidos] = info.nombre.split(' ');
+    const apellidoPaterno = apellidos.slice(0, apellidos.length-1).join(' ');
+    const apellidoMaterno = apellidos.slice(-1)[0];
+    const personaData = {
+      nombre,
+      apellidoPaterno,
+      apellidoMaterno,
+      email: info.email,
+      carnet: `TUT-${codTut}`
+    };
+    codTut++;
+    // Upsert persona y usuario
+    const per = await prisma.persona.upsert({ where: { carnet: personaData.carnet }, create: personaData, update: personaData });
     const passw = await hashPassword('1234');
     const user = await prisma.userN.upsert({
       where: { codPer: per.codPer },
@@ -74,12 +98,36 @@ async function main() {
       create: { codUserN: user.codUserN, codRol: rolesMap['Tutor'] },
       update: {}
     });
+    // Obtener área y municipio por defecto
+    const areaRec = await prisma.area.findUnique({ where: { nombreArea: info.area }});
+    const codMunDefault = 1; // cambiar si deseas municipio específico
     const tut = await prisma.tutor.upsert({
       where: { codPer: per.codPer },
-      create: { codPer: per.codPer, institucion: t.institucion || 'Instituto X', codMun: t.codMun },
-      update: { codMun: t.codMun }
+      create: { codPer: per.codPer, institucion: 'FCyT UMSS', codMun: codMunDefault, codArea: areaRec.codArea },
+      update: { codMun: codMunDefault, codArea: areaRec.codArea }
     });
-    tutorMap[t.persona.email] = tut.codTut;
+    tutorMap[info.email] = tut.codTut;
+  }
+
+  // Seed Robótica: tutor aleatorio
+  {
+    const info = { area: 'Robótica', nombre: 'Alex Martinez', email: 'alex.martinez@fcyt.umss.edu.bo' };
+    const [nombre, ...apellidos] = info.nombre.split(' ');
+    const apellidoPaterno = apellidos.slice(0, apellidos.length-1).join(' ');
+    const apellidoMaterno = apellidos.slice(-1)[0];
+    const personaData = { nombre, apellidoPaterno, apellidoMaterno, email: info.email, carnet: `TUT-${codTut}` };
+    const per = await prisma.persona.upsert({ where: { carnet: personaData.carnet }, create: personaData, update: personaData });
+    const passw = await hashPassword('1234');
+    const user = await prisma.userN.upsert({
+      where: { codPer: per.codPer },
+      create: { codPer: per.codPer, passwUser: passw, codSis: 'TS-TUT' },
+      update: { passwUser: passw }
+    });
+    await prisma.userNRol.upsert({ where: { codUserN_codRol: { codUserN: user.codUserN, codRol: rolesMap['Tutor'] } }, create: { codUserN: user.codUserN, codRol: rolesMap['Tutor'] }, update: {} });
+    const areaRec = await prisma.area.findUnique({ where: { nombreArea: 'Robótica' }});
+    const codMunDefault = 1;
+    const tut = await prisma.tutor.upsert({ where: { codPer: per.codPer }, create: { codPer: per.codPer, institucion: 'Facultad de Tecnología', codMun: codMunDefault, codArea: areaRec.codArea }, update: { codMun: codMunDefault, codArea: areaRec.codArea }});
+    tutorMap[info.email] = tut.codTut;
   }
 
   // 5) Competencia
@@ -94,77 +142,9 @@ async function main() {
     update: {}
   });
 
-  // 6) Catálogo y Modalidades
-  const catalog = JSON.parse(await fs.readFile(path.join(__dirname, '../../data/area-grado-nivel.json'), 'utf8'));
-  for (const entry of catalog) {
-    const areaRec = await prisma.area.upsert({ where: { nombreArea: entry.area }, create: { nombreArea: entry.area }, update: {} });
-    for (const item of entry.items) {
-      if (esNivelRegular(item.nivel)) {
-        const { numero, ciclo } = parsearNivelRegular(item.nivel);
-        const gradoRec = await prisma.grado.upsert({ where: { numero_ciclo: { numero, ciclo } }, create: { numero, ciclo }, update: {} });
-        await prisma.areaGrado.upsert({ where: { codArea_codGrado: { codArea: areaRec.codArea, codGrado: gradoRec.codGrado } }, create: { codArea: areaRec.codArea, codGrado: gradoRec.codGrado }, update: {} });
-        // Modalidad
-        await prisma.modalidadCompetencia.findFirst() ||
-        await prisma.modalidadCompetencia.create({ data: { codCompet: comp.codCompet, codArea: areaRec.codArea, codGrado: gradoRec.codGrado } });
-      } else {
-        const ne = await prisma.nivelEspecial.upsert({ where: { nombreNivel: item.nivel }, create: { nombreNivel: item.nivel, gradoRange: item.grado, codArea: areaRec.codArea }, update: { gradoRange: item.grado } });
-        await prisma.modalidadCompetencia.findFirst() ||
-        await prisma.modalidadCompetencia.create({ data: { codCompet: comp.codCompet, codArea: areaRec.codArea, codNivelEspecial: ne.codNivel } });
-      }
-    }
-  }
+  
 
-  // 7) Competidores + Inscripciones
-  for (const c of data.competidores) {
-    const per = await prisma.persona.upsert({ where: { carnet: c.persona.carnet }, create: c.persona, update: {} });
-    const passw = await hashPassword('1234');
-    const user = await prisma.userN.upsert({ where: { codPer: per.codPer }, create: { codPer: per.codPer, passwUser: passw, codSis: 'TS-COMP' }, update: { passwUser: passw } });
-    await prisma.userNRol.upsert({ where: { codUserN_codRol: { codUserN: user.codUserN, codRol: rolesMap['Competidor'] } }, create: { codUserN: user.codUserN, codRol: rolesMap['Competidor'] }, update: {} });
-
-    // Buscar modalidad según nivel
-    let modalRec;
-    if (esNivelRegular(c.nivel)) {
-      const { numero, ciclo } = parsearNivelRegular(c.nivel);
-      const gradoRec = await prisma.grado.findUnique({ where: { numero_ciclo: { numero, ciclo } } });
-      modalRec = await prisma.modalidadCompetencia.findFirst({ where: { codCompet: comp.codCompet, codGrado: gradoRec.codGrado } });
-    } else {
-      const ne = await prisma.nivelEspecial.findUnique({ where: { nombreNivel: c.nivel } });
-      modalRec = await prisma.modalidadCompetencia.findFirst({ where: { codCompet: comp.codCompet, codNivelEspecial: ne.codNivel } });
-    }
-    if (!modalRec) throw new Error(`No se encontró Modalidad para nivel ${c.nivel}`);
-    const codModal = modalRec.codModal;
-
-    // Competidor
-    // Determinar valor numérico de nivel para tabla Competidor
-    let nivelVal;
-    if (esNivelRegular(c.nivel)) {
-      const { numero } = parsearNivelRegular(c.nivel);
-      nivelVal = numero;
-    } else {
-      const ne = await prisma.nivelEspecial.findUnique({ where: { nombreNivel: c.nivel } });
-      nivelVal = ne.codNivel;
-    }
-    await prisma.competidor.upsert({
-      where: { codPer: per.codPer },
-      create: { 
-        codPer: per.codPer, 
-        fechaNac: new Date(c.fechaNac), 
-        codMun: c.codMun, 
-        colegio: c.colegio, 
-        grado: c.grado, 
-        nivel: nivelVal
-      },
-      update: { 
-        fechaNac: new Date(c.fechaNac), 
-        codMun: c.codMun, 
-        colegio: c.colegio,
-        nivel: nivelVal
-      }
-    });
-
-    // Inscripciónón
-    await prisma.inscripcion.create({ data: { codModal, codTutor: tutorMap[c.tutorEmail], codCompet: comp.codCompet, estadoInscripcion: 'Pendiente', fechaInscripcion: new Date() } });
-  }
+  
 
   console.log('✅ Seed completo con nuevo esquema y modalidades dinámicas');
 }
