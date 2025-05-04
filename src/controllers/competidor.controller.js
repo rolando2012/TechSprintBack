@@ -1,4 +1,4 @@
-const { get } = require('../app');
+
 const prisma = require('../base/db');
 
 const getCompetidores = async (req, res) => {

@@ -1,6 +1,3 @@
-// seedFull.js
-// Seed configurado para el nuevo esquema y creación de Modalidades sin depender de la clave area#nivel
-
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcrypt');
 const fs = require('fs/promises');
@@ -10,20 +7,7 @@ const prisma = new PrismaClient();
 const SALT_ROUNDS = 10;
 
 async function hashPassword(plain) {
-  return bcrypt.hash(plain, SALT_ROUNDS);
-}
-
-function esNivelRegular(nivel) {
-  return /^\d+[PS]$/.test(nivel);
-}
-
-function parsearNivelRegular(nivel) {
-  const match = nivel.match(/^(\d+)([PS])$/);
-  if (!match) throw new Error(`Nivel inválido: ${nivel}`);
-  return {
-    numero: parseInt(match[1], 10),
-    ciclo: match[2] === 'P' ? 'PRIMARIA' : 'SECUNDARIA'
-  };
+  return bcrypt.hashSync(plain, SALT_ROUNDS);
 }
 
 async function main() {
