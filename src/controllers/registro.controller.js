@@ -300,6 +300,7 @@ const regCompetidor = async (req, res) => {
           codModal,
           codTutor:          tutorId,
           codCompet:         comp.codCompet,
+          codComp:           compRec.codComp,
           estadoInscripcion: 'Pendiente',
           fechaInscripcion:  new Date()
         }

@@ -189,11 +189,14 @@ model Inscripcion {
   codCompet         Int      @db.Integer
   estadoInscripcion String   @db.VarChar(10)
   fechaInscripcion  DateTime @db.Date
+  codComp           Int      @db.Integer
 
   modalidad   ModalidadCompetencia @relation(fields: [codModal], references: [codModal])
   tutor       Tutor                @relation(fields: [codTutor], references: [codTut])
   competencia Competencia          @relation(fields: [codCompet], references: [codCompet])
   pagos       Pago[]
+  competidor  Competidor           @relation(fields: [codComp], references: [codComp])
+  @@index([codComp])
 }
 
 model Competidor {
@@ -207,6 +210,7 @@ model Competidor {
 
   persona   Persona   @relation(fields: [codPer], references: [codPer])
   municipio Municipio @relation(fields: [codMun], references: [codMun])
+  inscripciones Inscripcion[]
 }
 
 model CamposObligatorios {
