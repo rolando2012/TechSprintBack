@@ -46,7 +46,7 @@ const loginUser = async (req, res) => {
       
 
     try{
-        const token = jwt.sign({ id: user.codPer, name: user.nombre, rol: rl.nombreRol}, config.app.jwt, { expiresIn: '20m' });
+        const token = jwt.sign({ id: user.codPer, name: user.nombre, rol: rl.nombreRol}, config.app.jwt, { expiresIn: '1d' });
         res.cookie('access_token',token,{
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',

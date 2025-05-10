@@ -6,12 +6,20 @@ const getComptByTutor = async (req, res) => {
     if (isNaN(id)) {
         return res.status(400).json({ message: 'El tutor debe ser un número entero.' });
         }
+
+    const idTutor = await prisma.tutor.findUnique({
+        select:{
+            codTut:true
+        },where:{
+            codPer: id
+        }
+    })
     
     const competidores = await prisma.persona.findMany({
         where: {
             competidor: {
             inscripciones: {
-                some: { codTutor: id }
+                some: { codTutor: idTutor.codTut }
             }
             }
         },
