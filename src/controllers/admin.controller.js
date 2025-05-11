@@ -91,7 +91,19 @@ const regCompetencia = async (req, res) => {
 
 }
 
+const getCompetencias = async (req, res) => {
+    const competencias = await prisma.competencia.findMany({
+        select:{
+            codCompet: true,
+            gestion: true,
+            fechaIni: true,
+            costo:true
+        }
+    })
+    res.json(competencias);
+}
+
 module.exports ={
     regCompetencia,
-
+    getCompetencias
 }
