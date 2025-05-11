@@ -6,6 +6,7 @@ const cors = require('cors');
 const competidor = require('./routes/competidor.routes');
 const registro = require('./routes/registro.routes');
 const authRoutes = require('./routes/auth.route');
+const administrador = require('./routes/administrador.route')
 const cookieParser = require('cookie-parser');
 
 const app = express();
@@ -25,6 +26,7 @@ app.set('port', config.app.port);
 app.use('/api/competidor',competidor);
 app.use('/api/registro',registro);
 app.use('/api/auth', authRoutes);
+app.use('/api/administrador',administrador);
 
 
 module.exports = app;
