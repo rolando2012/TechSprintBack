@@ -1,5 +1,36 @@
 const prisma = require('../base/db');
 
+async function generarNombreCompetenciaUnico(prisma, prefijoBase) {
+    // 1) Traemos todos los nombres que empiecen con el prefijoBase
+    const existentes = await prisma.competencia.findMany({
+      where: {
+        nombreCompet: {
+          startsWith: prefijoBase
+        }
+      },
+      select: { nombreCompet: true }
+    });
+  
+    if (existentes.length === 0) {
+      // no hay ninguno: usamos el prefijo tal cual
+      return prefijoBase;
+    }
+  
+    // 2) Extraemos sufijos -N
+    const sufijos = existentes.map(({ nombreCompet }) => {
+      const match = nombreCompet.match(new RegExp(`^${prefijoBase}-(\\d+)$`));
+      return match ? parseInt(match[1], 10) : 1;
+    });
+  
+    // 3) Calculamos el siguiente contador
+    const maxSuffix = Math.max(...sufijos);
+    const next = maxSuffix + 1;
+  
+    // 4) Devolvemos con sufijo
+    return `${prefijoBase}-${next}`;
+  }
+  
+
 const regCompetencia = async (req, res) => {
     try {
         const {
@@ -9,11 +40,17 @@ const regCompetencia = async (req, res) => {
           costoConfirmado,
           stages
         } = req.body
+
+        const gestion = new Date().getFullYear();
+        const prefijo = `Competencia ${gestion}`;
+    
+        // Genera un nombre único para pruebas
+        const nombreCompet = await generarNombreCompetenciaUnico(prisma, prefijo);
     
         // 1) Crear Competencia
         const competencia = await prisma.competencia.create({
           data: {
-            nombreCompet: `Competencia ${new Date().getFullYear()}`, // o lo que necesites
+            nombreCompet: nombreCompet, // o lo que necesites
             fechaIni: new Date(stages[0].startDate),
             fechaFin: new Date(stages[stages.length - 1].endDate),
             horaIniIns: new Date(`1970-01-01T${stages[0].startTime}:00`),
