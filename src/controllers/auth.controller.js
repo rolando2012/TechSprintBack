@@ -4,15 +4,24 @@ const bcrypt = require('bcrypt');
 const config = require('../config');
 
 const loginUser = async (req, res) => {
-    const { email, password, code } = req.body;
+    const { email, password } = req.body;
 
-    const user = await prisma.persona.findUnique({
+    let user = await prisma.persona.findUnique({
         where:{
             email: email 
     }}); 
 
     if (!user) {
-        return res.status(401).json({ message: 'Invalid email or password' });
+        const aux = await prisma.persona.findFirst({
+            where:{
+                nombre: email,
+            }
+        });
+        if(!aux){
+            return res.status(401).json({ message: 'Invalid email or password' });
+        }else{
+            user=aux;
+        }
     }
 
     const passw = await prisma.userN.findUnique({
@@ -21,12 +30,12 @@ const loginUser = async (req, res) => {
         },
         where:{
             codPer: user.codPer,
-            codSis: code
+           
         }
     })
 
     if (!passw || !(await bcrypt.compareSync(password,passw.passwUser))){
-        return res.status(401).json({ message: 'Invalid code or password' });
+        return res.status(401).json({ message: 'Invalid email or password' });
     }
 
     const rl = await prisma.rol.findFirst({

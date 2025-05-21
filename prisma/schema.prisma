@@ -83,7 +83,6 @@ model UserN {
   codUserN  Int    @id @default(autoincrement()) @db.Integer
   codPer    Int    @unique @db.Integer
   passwUser String @db.VarChar(60)
-  codSis    String @db.VarChar(10)
 
   persona Persona    @relation(fields: [codPer], references: [codPer])
   roles   UserNRol[]

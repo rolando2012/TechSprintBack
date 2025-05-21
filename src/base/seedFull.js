@@ -28,8 +28,8 @@ async function main() {
     const passw = await hashPassword('1234');
     const user = await prisma.userN.upsert({
       where: { codPer: per.codPer },
-      create: { codPer: per.codPer, passwUser: passw, codSis: u.codSis },
-      update: { passwUser: passw, codSis: u.codSis }
+      create: { codPer: per.codPer, passwUser: passw },
+      update: { passwUser: passw,  }
     });
     await prisma.userNRol.upsert({
       where: { codUserN_codRol: { codUserN: user.codUserN, codRol: rolesMap[u.tipo] } },
@@ -74,7 +74,7 @@ async function main() {
     const passw = await hashPassword('1234');
     const user = await prisma.userN.upsert({
       where: { codPer: per.codPer },
-      create: { codPer: per.codPer, passwUser: passw, codSis: 'TS-TUT' },
+      create: { codPer: per.codPer, passwUser: passw },
       update: { passwUser: passw }
     });
     await prisma.userNRol.upsert({
@@ -104,7 +104,7 @@ async function main() {
     const passw = await hashPassword('1234');
     const user = await prisma.userN.upsert({
       where: { codPer: per.codPer },
-      create: { codPer: per.codPer, passwUser: passw, codSis: 'TS-TUT' },
+      create: { codPer: per.codPer, passwUser: passw },
       update: { passwUser: passw }
     });
     await prisma.userNRol.upsert({ where: { codUserN_codRol: { codUserN: user.codUserN, codRol: rolesMap['Tutor'] } }, create: { codUserN: user.codUserN, codRol: rolesMap['Tutor'] }, update: {} });
