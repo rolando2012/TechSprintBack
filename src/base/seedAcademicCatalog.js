@@ -6,11 +6,12 @@ const prisma = new PrismaClient();
 function esNivelRegular(nivel) {
   return /^\d+[PS]$/.test(nivel);
 }
+
 function parsearNivelRegular(nivel) {
   const [, numStr, cicloSuf] = nivel.match(/^(\d+)([PS])$/);
   return {
     numero: +numStr,
-    ciclo: cicloSuf === 'P' ? 'PRIMARIA' : 'SECUNDARIA'
+    ciclo: cicloSuf === 'P' ? 'Primaria' : 'Secundaria'
   };
 }
 
@@ -27,7 +28,7 @@ async function main() {
 
     for (const { nivel, grado } of items) {
       if (esNivelRegular(nivel)) {
-        // => Grados numéricos
+        // Grados numéricos regulares
         const { numero, ciclo } = parsearNivelRegular(nivel);
         const gradoRec = await prisma.grado.upsert({
           where: { numero_ciclo: { numero, ciclo } },
@@ -42,49 +43,43 @@ async function main() {
           update: {}
         });
 
-      } else {
-        // => Niveles especiales, guardo también el string de rango de grados
+      } else if (['Informática', 'Robótica'].includes(area)) {
+        // Niveles especiales (solo Informática y Robótica)
         await prisma.nivelEspecial.upsert({
           where: { nombreNivel: nivel },
           create: {
             nombreNivel: nivel,
-            gradoRange: grado,       // <--- aquí
+            gradoRange: grado,
             codArea: areaRec.codArea
           },
-          update: { gradoRange: grado } // actualizo por si cambió el texto
+          update: { gradoRange: grado }
         });
       }
+      // Otros niveles especiales (antes Matemáticas) se omiten
     }
   }
 
   console.log('Seed completado.');
 
-  const competencias = await prisma.competencia.findMany({
-    select: {
-      codCompet: true, 
-    },
-  });
+  // Asociación masiva Competencia <-> Área, idempotente
+  const competencias = await prisma.competencia.findMany({ select: { codCompet: true } });
+  const areas = await prisma.area.findMany({ select: { codArea: true } });
 
-  const areas = await prisma.area.findMany({
-    select: {
-      codArea: true, 
-    },
-  });
-
-  for (const competencia of competencias) {
-    for (const area of areas) {
-      await prisma.competenciaArea.create({
-        data: {
-          codCompet: competencia.codCompet, 
-          codArea: area.codArea,
-
-        },
-      });
-      console.log(`Asociado Competencia ${competencia.codCompet} con Área ${area.codArea}`);
+  const upserts = [];
+  for (const c of competencias) {
+    for (const a of areas) {
+      upserts.push(
+        prisma.competenciaArea.upsert({
+          where: { codCompet_codArea: { codCompet: c.codCompet, codArea: a.codArea } },
+          create: { codCompet: c.codCompet, codArea: a.codArea },
+          update: {}
+        })
+      );
     }
   }
+  await prisma.$transaction(upserts);
 
-  console.log('✔️ CompetenciaArea llenada exitosamente.');
+  console.log('✔️ CompetenciaArea llenada exitosamente (idempotente).');
 }
 
 main()

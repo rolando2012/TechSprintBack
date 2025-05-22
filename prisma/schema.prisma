@@ -16,8 +16,8 @@ datasource db {
 
 // Enum para distinguir Primaria y Secundaria
 enum Ciclo {
-  PRIMARIA
-  SECUNDARIA
+  Primaria
+  Secundaria
 }
 
 model Departamento {
