@@ -130,9 +130,30 @@ const getGrados = async (req, res) => {
   res.json(grados);
 };
 
+const getNiveles = async (req, res) => {
+  const grados = await prisma.area.findMany({
+    where: {
+      nivelesEspeciales: {
+        some: {}              // “some” sin condiciones devuelve áreas con ≥1 areaGrado
+      }
+    },
+    select: {
+      nombreArea: true,
+      nivelesEspeciales: {
+        select: {
+          nombreNivel: true,
+          gradoRange: true,
+        }
+      }
+    }
+  });
+
+  res.json(grados);
+};
 
 module.exports ={
     regCompetencia,
     getCompetencias,
     getGrados,
+    getNiveles,
 }
