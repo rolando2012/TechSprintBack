@@ -95,8 +95,10 @@ const getCompetencias = async (req, res) => {
     const competencias = await prisma.competencia.findMany({
         select:{
             codCompet: true,
+            nombreCompet: true,
             gestion: true,
             fechaIni: true,
+            fechaFin: true,
             costo:true
         }
     })
