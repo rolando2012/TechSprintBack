@@ -83,6 +83,25 @@ const regCompetencia = async (req, res) => {
 
 }
 
+const checkNombreUnico = async (req, res) => {
+  try {
+    const { nombre } = req.body
+    if (!nombre || typeof nombre !== 'string') {
+      return res.status(400).json({ error: 'Nombre inválido' })
+    }
+
+    const existing = await prisma.competencia.findUnique({
+      where: { nombreCompet: nombre }
+    })
+
+    // Si existe, unique = false; si no, true
+    return res.status(200).json({ unique: existing ? false : true })
+  } catch (error) {
+    console.error('[POST /competencia/validar-nombre]', error)
+    return res.status(500).json({ error: 'Error validando el nombre' })
+  }
+}
+
 const getCompetencias = async (req, res) => {
     const competencias = await prisma.competencia.findMany({
         select:{
@@ -148,4 +167,5 @@ module.exports ={
     getCompetencias,
     getGrados,
     getNiveles,
+    checkNombreUnico,
 }
