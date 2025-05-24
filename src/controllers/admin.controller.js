@@ -34,7 +34,7 @@ async function generarNombreCompetenciaUnico(prisma, prefijoBase) {
 const regCompetencia = async (req, res) => {
     try {
         const {
-          selectedAreas,
+          nombre,
           nivelesMap,
           categoriasMap,
           costoConfirmado,
@@ -44,25 +44,17 @@ const regCompetencia = async (req, res) => {
         const gestion = new Date().getFullYear();
         const prefijo = `Competencia ${gestion}`;
     
-        // Genera un nombre único para pruebas
-        const nombreCompet = await generarNombreCompetenciaUnico(prisma, prefijo);
-    
         // 1) Crear Competencia
         const competencia = await prisma.competencia.create({
           data: {
-            nombreCompet: nombreCompet, // o lo que necesites
+            nombreCompet: nombre, // o lo que necesites
             fechaIni: new Date(stages[0].startDate),
             fechaFin: new Date(stages[stages.length - 1].endDate),
             horaIniIns: new Date(`1970-01-01T${stages[0].startTime}:00`),
             horaFinIns: new Date(`1970-01-01T${stages[stages.length - 1].endTime}:00`),
             costo: costoConfirmado,
             gestion: new Date().getFullYear(),
-            // Relaciones a áreas
-            areas: {
-              create: selectedAreas.map(nombreArea => ({
-                area: { connect: { nombreArea } }
-              }))
-            },
+            
             // Aquí podrías mapear nivelesMap y categoriasMap según tu lógica...
           }
         })

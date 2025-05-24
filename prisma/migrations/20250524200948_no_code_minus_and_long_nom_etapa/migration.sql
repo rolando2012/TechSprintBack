@@ -15,4 +15,7 @@ DROP TYPE "Ciclo_old";
 COMMIT;
 
 -- AlterTable
+ALTER TABLE "EtapaCompetencia" ALTER COLUMN "nombreEtapa" SET DATA TYPE VARCHAR(100);
+
+-- AlterTable
 ALTER TABLE "UserN" DROP COLUMN "codSis";

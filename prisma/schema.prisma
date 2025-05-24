@@ -231,7 +231,7 @@ model CompCampObl {
 model EtapaCompetencia {
   codEtapa       Int      @id @default(autoincrement()) @db.Integer
   codCompetencia Int      @db.Integer
-  nombreEtapa    String   @db.VarChar(50)
+  nombreEtapa    String   @db.VarChar(100)
   descripcion    String?  @db.VarChar(255)
   fechaInicio    DateTime @db.Date
   horaInicio     DateTime @db.Time
