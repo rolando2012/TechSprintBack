@@ -262,6 +262,20 @@ const registrarTutor = async (req, res) => {
   }
 }
 
+const getCompetencia = async (req, res) =>{
+const comp = await prisma.competencia.findFirst({ orderBy: { codCompet: 'asc' } });
+  if (!comp) return res.status(404).json({ error: 'No hay competencias' });
+  res.json(comp);
+};
+
+const getEtapas = async (req, res) =>{
+  const id = Number(req.params.id);
+  const etapas = await prisma.etapaCompetencia.findMany({
+    where: { codCompetencia: id },
+    orderBy: { orden: 'asc' },
+  });
+  res.json(etapas);
+};
 
 module.exports ={
     regCompetencia,
@@ -270,4 +284,6 @@ module.exports ={
     getNiveles,
     checkNombreUnico,
     registrarTutor,
+    getCompetencia,
+    getEtapas,
 }

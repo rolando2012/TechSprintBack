@@ -11,55 +11,66 @@ async function seedPrimeraCompetencia() {
     update: {},
     create: {
       nombreCompet: "Olimpiada de Ciencia y Tecnología",
-      fechaIni: new Date("2025-04-15"),      // inicio de inscripciones
-      fechaFin: new Date("2025-04-30"),      // fin de inscripciones
-      horaIniIns: new Date("2025-04-15T00:00:00"),
-      horaFinIns: new Date("2025-04-30T23:59:59"),
+      fechaIni: new Date("2025-05-15"),      // inicio de inscripciones
+      fechaFin: new Date("2025-09-14"),      // fin de última etapa (Competición)
+      horaIniIns: new Date("2025-05-15T00:00:00"),
+      horaFinIns: new Date("2025-06-14T23:59:59"),
       costo: 16.0,
       gestion: 2025,
     },
   });
 
-  // 4) Crear Etapas
+  // 4) Crear Nuevas Etapas
   const etapas = [
     {
-      nombreEtapa: "Etapa Clasificatoria",
-      descripcion: "Pruebas presenciales. Lugar: Campus de la UMSS",
-      fechaInicio: new Date("2025-05-31"),
-      horaInicio: new Date("2025-05-31T09:00:00"),
-      fechaFin: new Date("2025-05-31"),
-      horaFin: new Date("2025-05-31T17:00:00"),
+      nombreEtapa: "Inscripciones",
+      descripcion: "Periodo de inscripciones de competidores",
+      fechaInicio: new Date("2025-05-15"),
+      horaInicio: new Date("2025-05-15T00:00:00"),
+      fechaFin: new Date("2025-06-14"),
+      horaFin: new Date("2025-06-14T23:59:59"),
       orden: 1,
-      estado: "Activo",
+      estado: "active",
     },
     {
-      nombreEtapa: "Etapa Final",
-      descripcion: "Pruebas presenciales. Lugar: Campus de la UMSS",
-      fechaInicio: new Date("2025-07-11"),
-      horaInicio: new Date("2025-07-11T09:00:00"),
-      fechaFin: new Date("2025-07-11"),
-      horaFin: new Date("2025-07-11T17:00:00"),
+      nombreEtapa: "Validación de Requisitos",
+      descripcion: "Validación de requisitos y aceptación por tutores",
+      fechaInicio: new Date("2025-06-15"),
+      horaInicio: new Date("2025-06-15T00:00:00"),
+      fechaFin: new Date("2025-07-14"),
+      horaFin: new Date("2025-07-14T23:59:59"),
       orden: 2,
-      estado: "Activo",
+      estado: "pending",
     },
     {
-      nombreEtapa: "Premiación",
-      descripcion: "Ceremonia de entrega de diplomas y medallas. Lugar: Campus de la UMSS",
-      fechaInicio: new Date("2025-07-11"),
-      horaInicio: new Date("2025-07-11T15:00:00"),
-      fechaFin: new Date("2025-07-11"),
-      horaFin: new Date("2025-07-11T17:00:00"),
+      nombreEtapa: "Pago de Inscripciones",
+      descripcion: "Periodo de pago de inscripciones",
+      fechaInicio: new Date("2025-07-15"),
+      horaInicio: new Date("2025-07-15T00:00:00"),
+      fechaFin: new Date("2025-08-14"),
+      horaFin: new Date("2025-08-14T23:59:59"),
       orden: 3,
-      estado: "Activo",
+      estado: "pending",
+    },
+    {
+      nombreEtapa: "Competición",
+      descripcion: "Periodo de competición",
+      fechaInicio: new Date("2025-08-15"),
+      horaInicio: new Date("2025-08-15T00:00:00"),
+      fechaFin: new Date("2025-09-14"),
+      horaFin: new Date("2025-09-14T23:59:59"),
+      orden: 4,
+      estado: "pending",
     },
   ];
 
   for (const e of etapas) {
     await prisma.etapaCompetencia.upsert({
       where: {
-        codEtapa: {
-          // no hay campo compueso en la PK, así que buscamos por nombre+competencia
-        },
+        nombreEtapa_codCompetencia: {
+          nombreEtapa: e.nombreEtapa,
+          codCompetencia: comp.codCompet,
+        }
       },
       update: {},
       create: {
@@ -67,7 +78,6 @@ async function seedPrimeraCompetencia() {
         ...e,
       },
     }).catch(async () => {
-      // fallback a create si upsert falla
       await prisma.etapaCompetencia.create({
         data: { codCompetencia: comp.codCompet, ...e },
       });

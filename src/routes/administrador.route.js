@@ -1,6 +1,6 @@
 const express = require('express');
 const prisma = require('../base/db');
-const {regCompetencia, getCompetencias, getGrados, getNiveles, checkNombreUnico, registrarTutor} = require('../controllers/admin.controller');
+const {regCompetencia, getCompetencias, getGrados, getNiveles, checkNombreUnico, registrarTutor, getCompetencia, getEtapas} = require('../controllers/admin.controller');
 
 const router = express.Router();
 
@@ -10,5 +10,7 @@ router.get('/grados', getGrados);
 router.get('/niveles', getNiveles);
 router.post('/validar-nombre', checkNombreUnico)
 router.post('/registrar-tutor',registrarTutor)
+router.get('/competencias/first',getCompetencia);
+router.get('/competencias/:id/etapas', getEtapas);
 
 module.exports = router;
