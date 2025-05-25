@@ -1,4 +1,5 @@
 const prisma = require('../base/db'); 
+const { Prisma } = require('@prisma/client');
 
 const regCompetencia = async (req, res) => {
   try {
@@ -177,10 +178,73 @@ const getNiveles = async (req, res) => {
   res.json(grados);
 };
 
+const registrarTutor = async (req, res) => {
+   const {
+    nombres, apellidoPaterno, apellidoMaterno,
+    celular, email, carnet, institucion,
+    municipio, area
+  } = req.body;
+
+  try {
+    const resultado = await prisma.$transaction(async (tx) => {
+      // 1) crea persona
+      const persona = await tx.persona.create({
+        data: {
+          nombre:           nombres,
+          apellidoPaterno,
+          apellidoMaterno,
+          celular,
+          email,
+          carnet,
+        }
+      });
+
+      // 2) busca codMun
+      const found = await tx.municipio.findFirst({
+        where: { nombreMun: municipio },
+        select: { codMun: true }
+      });
+      if (!found) {
+        throw new Error(`Municipio \"${municipio}\" no existe`);
+      }
+
+      // 3) crea tutor
+      const tutor = await tx.tutor.create({
+        data: {
+          codPer:      persona.codPer,
+          institucion,
+          codMun:      found.codMun,
+          codArea:     parseInt(area, 10),
+        }
+      });
+
+      return { persona, tutor };
+    });
+
+    return res.status(201).json({
+      message: 'Tutor registrado con éxito',
+      data: resultado
+    });
+  } catch (error) {
+    console.error('Error registrando tutor:', error);
+    // Si es un error de constraint de email único:
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2002'
+    ) {
+      return res.status(400).json({ error: 'Email ya registrado' });
+    }
+    // Para otros errores
+    return res.status(500).json({ error: error.message || 'Error del servidor' });
+  }
+}
+
+
 module.exports ={
     regCompetencia,
     getCompetencias,
     getGrados,
     getNiveles,
     checkNombreUnico,
+    registrarTutor,
 }
