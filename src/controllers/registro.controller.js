@@ -38,6 +38,33 @@ const getMunicipios = async (req, res) => {
     res.json(municipios);
 }
 
+const getMunicipiosByName = async (req, res) => {
+    const name = req.params.nombre;
+
+    const id = await prisma.departamento.findFirst({
+        where: {
+            nombreDept: name
+        },
+        select:{
+            codDept:true
+        }
+    })
+    
+    const municipios = await prisma.municipio.findMany({
+        select:{
+            codMun:true,
+            nombreMun:true,
+        },
+        where: {
+            codDept: id.codDept
+        }
+    });
+    if (municipios.length === 0) {
+        return res.status(404).json({ message: 'No se encontraron municipios para el departamento especificado.' });
+    }
+    res.json(municipios);
+}
+
 const getAreas = async (req, res) => {
     const areas = await prisma.area.findMany({
         select:{
@@ -321,4 +348,5 @@ module.exports = {
     getTutores,
     regCompetidor,
     getCosto,
+    getMunicipiosByName,
 }

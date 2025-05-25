@@ -44,7 +44,7 @@ model Persona {
   apellidoMaterno String? @db.VarChar(30)
   celular         String? @db.VarChar(8)
   email           String? @unique @db.VarChar(89)
-  carnet          String  @unique @db.VarChar(10)
+  carnet          String  @db.VarChar(10)
 
   administrador  Administrador?
   cajero         Cajero?
