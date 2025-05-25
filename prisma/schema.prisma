@@ -120,10 +120,11 @@ model Grado {
   numero   Int
   ciclo    Ciclo
 
-  areaGrado   AreaGrado[]
-  modalidades ModalidadCompetencia[]
+  areaGrado         AreaGrado[]
+  modalidades       ModalidadCompetencia[]
+  competenciaGrados CompetenciaGrado[]
 
-  @@unique([numero, ciclo])
+  @@unique([numero, ciclo], name: "numero_ciclo")
 }
 
 model AreaGrado {
@@ -143,8 +144,9 @@ model NivelEspecial {
   gradoRange  String @db.VarChar(30) // ej. "5to a 6to Primaria"
   codArea     Int    @db.Integer
 
-  area        Area                   @relation(fields: [codArea], references: [codArea])
-  modalidades ModalidadCompetencia[] // si lo usas en algún punto
+  area               Area                       @relation(fields: [codArea], references: [codArea])
+  modalidades        ModalidadCompetencia[] // si lo usas en algún punto
+  competenciaNiveles CompetenciaNivelEspecial[]
 }
 
 model Competencia {
@@ -157,11 +159,12 @@ model Competencia {
   costo        Float    @db.DoublePrecision
   gestion      Int      @db.Integer
 
-  modalidades   ModalidadCompetencia[]
-  inscripciones Inscripcion[]
-  etapas        EtapaCompetencia[]
-  areas         CompetenciaArea[]
-  compCampObl   CompCampObl[]
+  modalidades        ModalidadCompetencia[]
+  inscripciones      Inscripcion[]
+  etapas             EtapaCompetencia[]
+  areas              CompetenciaArea[]
+  competenciaGrados  CompetenciaGrado[]
+  competenciaNiveles CompetenciaNivelEspecial[]
 }
 
 model ModalidadCompetencia {
@@ -195,6 +198,7 @@ model Inscripcion {
   competencia Competencia          @relation(fields: [codCompet], references: [codCompet])
   pagos       Pago[]
   competidor  Competidor           @relation(fields: [codComp], references: [codComp])
+
   @@index([codComp])
 }
 
@@ -207,25 +211,9 @@ model Competidor {
   grado    String   @db.VarChar(10)
   nivel    Int      @db.Integer
 
-  persona   Persona   @relation(fields: [codPer], references: [codPer])
-  municipio Municipio @relation(fields: [codMun], references: [codMun])
+  persona       Persona       @relation(fields: [codPer], references: [codPer])
+  municipio     Municipio     @relation(fields: [codMun], references: [codMun])
   inscripciones Inscripcion[]
-}
-
-model CamposObligatorios {
-  codCamp       Int           @id @default(autoincrement()) @db.Integer
-  nombreCampObl String        @unique @db.VarChar(30)
-  compCampObl   CompCampObl[]
-}
-
-model CompCampObl {
-  codCompet Int @db.Integer
-  codCamp   Int @db.Integer
-
-  competencia Competencia        @relation(fields: [codCompet], references: [codCompet])
-  campoObl    CamposObligatorios @relation(fields: [codCamp], references: [codCamp])
-
-  @@id([codCompet, codCamp])
 }
 
 model EtapaCompetencia {
@@ -251,6 +239,26 @@ model CompetenciaArea {
   area        Area        @relation(fields: [codArea], references: [codArea])
 
   @@id([codCompet, codArea])
+}
+
+model CompetenciaGrado {
+  codCompet Int
+  codGrado  Int
+
+  competencia Competencia @relation(fields: [codCompet], references: [codCompet])
+  grado       Grado       @relation(fields: [codGrado], references: [codGrado])
+
+  @@id([codCompet, codGrado])
+}
+
+model CompetenciaNivelEspecial {
+  codCompet Int
+  codNivel  Int
+
+  competencia Competencia   @relation(fields: [codCompet], references: [codCompet])
+  nivel       NivelEspecial @relation(fields: [codNivel], references: [codNivel])
+
+  @@id([codCompet, codNivel])
 }
 
 model Notificacion {
