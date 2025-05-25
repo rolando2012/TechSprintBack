@@ -106,13 +106,15 @@ model UserNRol {
 
 // Catálogo académico
 model Area {
-  codArea           Int                    @id @default(autoincrement()) @db.Integer
-  nombreArea        String                 @unique @db.VarChar(30)
+  codArea    Int    @id @default(autoincrement()) @db.Integer
+  nombreArea String @unique @db.VarChar(30)
+
   areaGrado         AreaGrado[]
   modalidades       ModalidadCompetencia[]
   competenciaAreas  CompetenciaArea[]
   nivelesEspeciales NivelEspecial[]
   tutors            Tutor[]
+  competenciaGrados CompetenciaGrado[]
 }
 
 model Grado {
@@ -243,12 +245,14 @@ model CompetenciaArea {
 
 model CompetenciaGrado {
   codCompet Int
+  codArea   Int
   codGrado  Int
 
   competencia Competencia @relation(fields: [codCompet], references: [codCompet])
+  area        Area        @relation(fields: [codArea], references: [codArea])
   grado       Grado       @relation(fields: [codGrado], references: [codGrado])
 
-  @@id([codCompet, codGrado])
+  @@id([codCompet, codArea, codGrado])
 }
 
 model CompetenciaNivelEspecial {

@@ -33,42 +33,43 @@ const regCompetencia = async (req, res) => {
       })
     ))
 
-    // 3) Guardar Grados: CompetenciaGrado
-    for (const [areaName, gradoList] of Object.entries(nivelesMap)) {
-      // obtén el codArea si lo necesitas, o simplemente mapea por grado
+    // 3) Guardar Grados + Área con createMany y skipDuplicates
+    const gradosToInsert = []
+
+    for (const [nombreArea, gradoList] of Object.entries(nivelesMap)) {
+      // 1) Busco el codArea para cada área
+      const area = await prisma.area.findUnique({
+        where: { nombreArea }
+      })
+      if (!area) continue
+
       for (const gradoNumStr of gradoList) {
-          const numero = parseInt(gradoNumStr, 10)
-          if (isNaN(numero)) continue
+        const numero = parseInt(gradoNumStr, 10)
+        if (isNaN(numero)) continue
+        const ciclo = numero <= 6 ? 'Primaria' : 'Secundaria'
 
-          // Determinas el ciclo según el número
-          const ciclo = numero <= 4 ? 'Primaria' : 'Secundaria'
-
-          // Ahora buscas por la clave compuesta
-          const grado = await prisma.grado.findUnique({
-            where: {
-              numero_ciclo: { numero, ciclo }
-            }
-          })
-
-          if (grado) {
-            const exists = await prisma.competenciaGrado.findUnique({
-              where: {
-                codCompet_codGrado: {
-                  codCompet: competencia.codCompet,
-                  codGrado:  grado.codGrado
-                }
-              }
-            })
-            if (!exists) {
-              await prisma.competenciaGrado.create({
-                data: {
-                  codCompet: competencia.codCompet,
-                  codGrado:  grado.codGrado
-                }
-              })
-            }
+        // 2) Busco el codGrado por la clave compuesta (numero, ciclo)
+        const grado = await prisma.grado.findUnique({
+          where: {
+            numero_ciclo: { numero, ciclo }
           }
+        })
+        if (!grado) continue
+
+        // 3) Acumulo la tupla (codCompet, codArea, codGrado)
+        gradosToInsert.push({
+          codCompet: competencia.codCompet,
+          codArea:   area.codArea,
+          codGrado:  grado.codGrado
+        })
       }
+    }
+
+    if (gradosToInsert.length) {
+      await prisma.competenciaGrado.createMany({
+        data: gradosToInsert,
+        skipDuplicates: true
+      })
     }
 
     // 4) Guardar Niveles Especiales: CompetenciaNivelEspecial
