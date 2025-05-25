@@ -1,5 +1,6 @@
 const prisma = require('../base/db'); 
 const { Prisma } = require('@prisma/client');
+const bcrypt = require('bcrypt');
 
 const regCompetencia = async (req, res) => {
   try {
@@ -218,24 +219,46 @@ const registrarTutor = async (req, res) => {
         }
       });
 
-      return { persona, tutor };
+      // 4) Hashea la contraseña (usamos el carnet como pass)
+      const hashed = await bcrypt.hash(carnet, 10);
+
+      // 5) Crea el usuario en UserN
+      const userN = await tx.userN.create({
+        data: {
+          codPer:      persona.codPer,
+          passwUser:   hashed,
+        }
+      });
+
+      // 6) Asigna el rol de tutor (codRol = 3)
+      const userNRol = await tx.userNRol.create({
+        data: {
+          codUserN:    userN.codUserN,
+          codRol:      3,
+        }
+      });
+
+      return { persona, tutor, userN, userNRol };
     });
 
     return res.status(201).json({
-      message: 'Tutor registrado con éxito',
+      message: 'Tutor, usuario y rol creados con éxito',
       data: resultado
     });
   } catch (error) {
     console.error('Error registrando tutor:', error);
-    // Si es un error de constraint de email único:
+
+    // Constraint de email único
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
-      error.code === 'P2002'
+      error.code === 'P2002' &&
+      error.meta.target.includes('email')
     ) {
-      return res.status(400).json({ error: 'Email ya registrado' });
+      return res.status(400).json({ error: 'El email ya está registrado' });
     }
-    // Para otros errores
-    return res.status(500).json({ error: error.message || 'Error del servidor' });
+
+    // Error de municipio no encontrado u otros
+    return res.status(400).json({ error: error.message || 'Error en el registro' });
   }
 }
 
