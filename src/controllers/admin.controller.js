@@ -283,15 +283,24 @@ const registrarTutor = async (req, res) => {
 }
 
 const getCompetencia = async (req, res) =>{
-const comp = await prisma.competencia.findFirst({ orderBy: { codCompet: 'asc' } });
+const id = Number(req.params.id);
+const comp = await prisma.competencia.findFirst({ 
+  where:{
+    codCompet: id
+  }
+});
   if (!comp) return res.status(404).json({ error: 'No hay competencias' });
   res.json(comp);
 };
 
 const getEtapas = async (req, res) =>{
-  const id = Number(req.params.id);
+  const nombre = req.params.nombre;
+  const id = await prisma.competencia.findFirst({
+    where: { nombreCompet: nombre},
+    select: { codCompet: true }
+  });
   const etapas = await prisma.etapaCompetencia.findMany({
-    where: { codCompetencia: id },
+    where: { codCompetencia: id.codCompet },
     orderBy: { orden: 'asc' },
   });
   res.json(etapas);

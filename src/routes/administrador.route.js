@@ -10,7 +10,7 @@ router.get('/grados', getGrados);
 router.get('/niveles', getNiveles);
 router.post('/validar-nombre', checkNombreUnico)
 router.post('/registrar-tutor',registrarTutor)
-router.get('/competencias/first',getCompetencia);
-router.get('/competencias/:id/etapas', getEtapas);
+router.get('/competencia/first/:id',getCompetencia);
+router.get('/competencias/:nombre/etapas', getEtapas);
 
 module.exports = router;
