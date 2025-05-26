@@ -3,102 +3,122 @@ const { Prisma } = require('@prisma/client');
 const bcrypt = require('bcrypt');
 
 const regCompetencia = async (req, res) => {
+  const { nombre, nivelesMap, categoriasMap, costoConfirmado, stages } = req.body;
+
+  const fechaIni = new Date(stages[0].startDate);
+  const fechaFin = new Date(stages[stages.length - 1].endDate);
+
   try {
-    const { nombre, nivelesMap, categoriasMap, costoConfirmado, stages } = req.body
-
-    // 1) Crear Competencia (sin áreas ya que las quitaste)
-    const competencia = await prisma.competencia.create({
-      data: {
-        nombreCompet: nombre,
-        fechaIni:     new Date(stages[0].startDate),
-        fechaFin:     new Date(stages[stages.length - 1].endDate),
-        horaIniIns:   new Date(`1970-01-01T${stages[0].startTime}:00`),
-        horaFinIns:   new Date(`1970-01-01T${stages[stages.length - 1].endTime}:00`),
-        costo:        costoConfirmado,
-        gestion:      new Date().getFullYear(),
+    // Validar si alguna etapa se solapa con otra competencia ya registrada
+    const conflictos = await prisma.competencia.findFirst({
+      where: {
+        OR: [
+          {
+            fechaIni: { lte: fechaFin },
+            fechaFin: { gte: fechaIni }
+          }
+        ]
       }
-    })
+    });
 
-    // 2) Crear Etapas...
-    await Promise.all(stages.map(s =>
-      prisma.etapaCompetencia.create({
+    if (conflictos) {
+      return res.status(400).json({ error: 'El rango de fechas se solapa con otra competencia existente.' });
+    }
+
+    // Ejecutar todo como una transacción
+    const resultado = await prisma.$transaction(async (tx) => {
+      // 1) Crear competencia
+      const competencia = await tx.competencia.create({
         data: {
-          codCompetencia: competencia.codCompet,
-          nombreEtapa:    s.name,
-          fechaInicio:    new Date(s.startDate),
-          horaInicio:     new Date(`1970-01-01T${s.startTime}:00`),
-          fechaFin:       new Date(s.endDate),
-          horaFin:        new Date(`1970-01-01T${s.endTime}:00`),
-          orden:          s.id,
-          estado:         'ACTIVO',
+          nombreCompet: nombre,
+          fechaIni,
+          fechaFin,
+          horaIniIns: new Date(`1970-01-01T${stages[0].startTime}:00`),
+          horaFinIns: new Date(`1970-01-01T${stages[stages.length - 1].endTime}:00`),
+          costo: costoConfirmado,
+          gestion: new Date().getFullYear()
         }
-      })
-    ))
+      });
 
-    // 3) Guardar Grados + Área con createMany y skipDuplicates
-    const gradosToInsert = []
-
-    for (const [nombreArea, gradoList] of Object.entries(nivelesMap)) {
-      // 1) Busco el codArea para cada área
-      const area = await prisma.area.findUnique({
-        where: { nombreArea }
-      })
-      if (!area) continue
-
-      for (const gradoNumStr of gradoList) {
-        const numero = parseInt(gradoNumStr, 10)
-        if (isNaN(numero)) continue
-        const ciclo = numero <= 6 ? 'Primaria' : 'Secundaria'
-
-        // 2) Busco el codGrado por la clave compuesta (numero, ciclo)
-        const grado = await prisma.grado.findUnique({
-          where: {
-            numero_ciclo: { numero, ciclo }
+      // 2) Crear etapas
+      await Promise.all(stages.map(stage =>
+        tx.etapaCompetencia.create({
+          data: {
+            codCompetencia: competencia.codCompet,
+            nombreEtapa: stage.name,
+            fechaInicio: new Date(stage.startDate),
+            horaInicio: new Date(`1970-01-01T${stage.startTime}:00`),
+            fechaFin: new Date(stage.endDate),
+            horaFin: new Date(`1970-01-01T${stage.endTime}:00`),
+            orden: stage.id,
+            estado: 'ACTIVO'
           }
         })
-        if (!grado) continue
+      ));
 
-        // 3) Acumulo la tupla (codCompet, codArea, codGrado)
-        gradosToInsert.push({
-          codCompet: competencia.codCompet,
-          codArea:   area.codArea,
-          codGrado:  grado.codGrado
-        })
-      }
-    }
+      // 3) Insertar grados por área
+      const gradosToInsert = [];
 
-    if (gradosToInsert.length) {
-      await prisma.competenciaGrado.createMany({
-        data: gradosToInsert,
-        skipDuplicates: true
-      })
-    }
+      for (const [nombreArea, gradoList] of Object.entries(nivelesMap)) {
+        const area = await tx.area.findUnique({
+          where: { nombreArea }
+        });
+        if (!area) continue;
 
-    // 4) Guardar Niveles Especiales: CompetenciaNivelEspecial
-    for (const [areaName, niveles] of Object.entries(categoriasMap)) {
-      for (const nombreNivel of niveles) {
-        const nivel = await prisma.nivelEspecial.findUnique({
-          where: { nombreNivel }
-        })
-        if (nivel) {
-          await prisma.competenciaNivelEspecial.create({
-            data: {
-              codCompet: competencia.codCompet,
-              codNivel:  nivel.codNivel
+        for (const gradoNumStr of gradoList) {
+          const numero = parseInt(gradoNumStr, 10);
+          if (isNaN(numero)) continue;
+          const ciclo = numero <= 6 ? 'Primaria' : 'Secundaria';
+
+          const grado = await tx.grado.findUnique({
+            where: {
+              numero_ciclo: { numero, ciclo }
             }
-          })
+          });
+          if (!grado) continue;
+
+          gradosToInsert.push({
+            codCompet: competencia.codCompet,
+            codArea: area.codArea,
+            codGrado: grado.codGrado
+          });
         }
       }
-    }
 
-    return res.status(201).json({ competencia })
+      if (gradosToInsert.length) {
+        await tx.competenciaGrado.createMany({
+          data: gradosToInsert,
+          skipDuplicates: true
+        });
+      }
+
+      // 4) Guardar niveles especiales
+      for (const [areaName, niveles] of Object.entries(categoriasMap)) {
+        for (const nombreNivel of niveles) {
+          const nivel = await tx.nivelEspecial.findUnique({
+            where: { nombreNivel }
+          });
+          if (nivel) {
+            await tx.competenciaNivelEspecial.create({
+              data: {
+                codCompet: competencia.codCompet,
+                codNivel: nivel.codNivel
+              }
+            });
+          }
+        }
+      }
+
+      return competencia;
+    });
+
+    return res.status(201).json({ competencia: resultado });
 
   } catch (error) {
-    console.error('[POST /competencia]', error)
-    return res.status(500).json({ error: error.message })
+    console.error('[POST /competencia]', error);
+    return res.status(500).json({ error: error.message });
   }
-}
-
+};
 
 const checkNombreUnico = async (req, res) => {
   try {
