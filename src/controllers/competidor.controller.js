@@ -97,6 +97,43 @@ const getComptByTutor = async (req, res) => {
         res.json(flattenedCompetidores)
 };
 
+const getEstadoCompetidores = async (req, res) =>{
+    const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) {
+    return res.status(400).json({ message: 'El tutor debe ser un número entero.' });
+  }
+
+  // 1. Buscamos el código interno del tutor
+  const tutor = await prisma.tutor.findUnique({
+    select: { codTut: true },
+    where:  { codPer: id }
+  });
+  if (!tutor) {
+    return res.status(404).json({ message: 'Tutor no encontrado.' });
+  }
+
+  // 3. Agrupamos las inscripciones de ese tutor por estado
+  const rawCounts = await prisma.inscripcion.groupBy({
+    by: ['estadoInscripcion'],
+    where: { codTutor: tutor.codTut },
+    _count: { estadoInscripcion: true }
+  });
+
+  // 4. Construimos el array final de estados, garantizando los tres que nos interesan
+  const estados = ['Pendiente', 'Aceptado', 'Rechazado'].map(estado => {
+    const entry = rawCounts.find(r => r.estadoInscripcion === estado);
+    return {
+      estado,
+      total: entry?._count.estadoInscripcion ?? 0
+    };
+  });
+
+  // 5. Devolvemos todo en un único JSON
+  return res.json({
+    estados
+  });
+};
+
 const getCompetidores = async (req, res) => {
     const datosInscripcion = await prisma.inscripcion.findMany({
         select: {
@@ -150,5 +187,6 @@ const getCompetidores = async (req, res) => {
 
 module.exports = {
     getCompetidores,
-    getComptByTutor
+    getComptByTutor,
+    getEstadoCompetidores
 }
