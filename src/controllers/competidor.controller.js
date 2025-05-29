@@ -29,6 +29,7 @@ const getComptByTutor = async (req, res) => {
             carnet: true,
             competidor: {
             select: {
+                codComp: true,
                 colegio: true,
                 nivel: true,
                 inscripciones: {
@@ -78,11 +79,13 @@ const getComptByTutor = async (req, res) => {
                 gradoRange =
                     persona.competidor.inscripciones[0].modalidad.nivelEspecial.gradoRange;
                 }
+                codComp = persona.competidor.codComp;
                 colegio = persona.competidor.colegio;
                 estadoInscripcion = persona.competidor.inscripciones[0].estadoInscripcion;
                 fechaInscripcion = persona.competidor.inscripciones[0].fechaInscripcion;
                 area = persona.competidor.inscripciones[0].modalidad.area.nombreArea;
                 return {
+                codComp,
                 nombre,
                 apellidoPaterno,
                 carnet,
