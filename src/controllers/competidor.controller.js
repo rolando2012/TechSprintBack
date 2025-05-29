@@ -34,6 +34,7 @@ const getComptByTutor = async (req, res) => {
                 inscripciones: {
                 select: {
                     estadoInscripcion:true,
+                    fechaInscripcion: true,
                     modalidad: {
                     select: {
                         area: {
@@ -79,6 +80,8 @@ const getComptByTutor = async (req, res) => {
                 }
                 colegio = persona.competidor.colegio;
                 estadoInscripcion = persona.competidor.inscripciones[0].estadoInscripcion;
+                fechaInscripcion = persona.competidor.inscripciones[0].fechaInscripcion;
+                area = persona.competidor.inscripciones[0].modalidad.area.nombreArea;
                 return {
                 nombre,
                 apellidoPaterno,
@@ -86,6 +89,8 @@ const getComptByTutor = async (req, res) => {
                 colegio,
                 gradoRange,
                 estadoInscripcion,
+                fechaInscripcion,
+                area,
                 };
             });
             

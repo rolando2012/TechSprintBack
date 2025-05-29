@@ -272,7 +272,7 @@ const regCompetidor = async (req, res) => {
       // Validaciones finales
       if (!codModal) throw new Error('No se pudo determinar la modalidad para inscripción');
       const tutorRec = await tx.tutor.findUnique({ 
-        where: { codPer: tutorId },
+        where: { codTut: tutorId },
         select: { codTut: true }
        });
       if (!tutorRec) throw new Error(`Tutor no encontrado (codTut: ${tutorId})`);
