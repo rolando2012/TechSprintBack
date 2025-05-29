@@ -123,7 +123,7 @@ const getEstadoCompetidores = async (req, res) =>{
   });
 
   // 4. Construimos el array final de estados, garantizando los tres que nos interesan
-  const estados = ['Pendiente', 'Aceptado', 'Rechazado'].map(estado => {
+  const estados = ['Pendiente', 'Verificado', 'Rechazado'].map(estado => {
     const entry = rawCounts.find(r => r.estadoInscripcion === estado);
     return {
       estado,
@@ -188,8 +188,50 @@ const getCompetidores = async (req, res) => {
     res.json(datosInscripcion);
 }
 
+// Estados válidos
+const VALID_ESTADOS = ['Pendiente', 'Aceptado', 'Rechazado', 'Verificado'];
+
+const actualizarEstado = async (req, res) => {
+  const codIns = parseInt(req.params.id, 10);
+  const { estado } = req.body;
+
+  // 1. Validaciones básicas
+  if (isNaN(codIns)) {
+    return res.status(400).json({ message: 'El ID de inscripción debe ser un número entero.' });
+  }
+  if (!VALID_ESTADOS.includes(estado)) {
+    return res.status(400).json({
+      message: `Estado inválido. Debe ser uno de: ${VALID_ESTADOS.join(', ')}.`
+    });
+  }
+
+  try {
+    // 2. Intentamos el update
+    const updated = await prisma.inscripcion.update({
+      where: { codIns },
+      data: { estadoInscripcion: estado }
+    });
+
+    // 3. Si todo salió bien, devolvemos la inscripción actualizada
+    return res.json({
+      message: 'Estado de inscripción actualizado correctamente.',
+      //inscripcion: updated
+    });
+  } catch (error) {
+    // 4. Manejo de errores
+    if (error.code === 'P2025') {
+      // Prisma error: registro no encontrado
+      return res.status(404).json({ message: 'Inscripción no encontrada.' });
+    }
+    console.error(error);
+    return res.status(500).json({ message: 'Error al actualizar la inscripción.' });
+  }
+};
+
+
 module.exports = {
     getCompetidores,
     getComptByTutor,
-    getEstadoCompetidores
+    getEstadoCompetidores,
+    actualizarEstado,
 }
