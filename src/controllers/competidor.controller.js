@@ -62,8 +62,6 @@ const getComptByTutor = async (req, res) => {
         }
         });
         
-
-
         const flattenedCompetidores = competidores.map((persona) => {
             const { nombre, apellidoPaterno, carnet } = persona;
             let gradoRange = null;
@@ -228,10 +226,146 @@ const actualizarEstado = async (req, res) => {
   }
 };
 
+const getComptByEmailCarnet = async (req, res) => {
+  const { carnet, email } = req.body;
+
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) {
+      return res.status(400).json({ message: 'El tutor debe ser un número entero.' });
+      }
+
+    const area = await prisma.tutor.findUnique({
+        select:{
+            area:true
+        },where:{
+            codPer: id
+        }
+    })
+
+  try {
+    const persona = await prisma.persona.findFirst({
+      where: {
+        carnet: carnet,
+        email: email,
+        competidor:{
+          is:{
+            inscripciones:{
+              some: {
+                modalidad: {
+                area: {
+                  nombreArea: area.area.nombreArea,
+                }
+              }
+            }
+          }
+          }
+        }
+      },
+      select: {
+        nombre: true,
+        apellidoPaterno: true,
+        apellidoMaterno: true,
+        carnet: true,
+        celular: true,
+        competidor: {
+          select: {
+            codComp: true,
+            colegio: true,
+            nivel: true,
+            fechaNac: true,
+            municipio: {
+              select: {
+                nombreMun: true,
+                departamento: {
+                  select: { nombreDept: true }
+                }
+              }
+            },
+            inscripciones: {
+              select: {
+                estadoInscripcion: true,
+                fechaInscripcion: true,
+                tutor: {
+                  select: {
+                    persona: {
+                      select: {
+                        nombre: true,
+                        apellidoPaterno: true,
+                        apellidoMaterno: true,
+                        email: true,
+                      }
+                    }
+                  }
+                },
+                modalidad: {
+                  select: {
+                    area: {
+                      select: { nombreArea: true },
+                    },
+                    grado: {
+                      select: {
+                        numero: true,
+                        ciclo: true
+                      }
+                    },
+                    nivelEspecial: {
+                      select: {
+                        nombreNivel: true,
+                        gradoRange: true
+                      }
+                    }
+                  }
+                },
+                pagos:{
+                  select: {
+                    estadoPago: true,
+                  }
+                },
+              },
+              take: 1 // solo la primera inscripción relevante
+            }
+          }
+        }
+      }
+    });
+
+    if (!persona) {
+      return res.status(404).json({ message: 'Competidor no encontrado.' });
+    }
+
+    const inscripcion = persona.competidor?.inscripciones[0];
+    const modalidad = inscripcion?.modalidad;
+
+    const response = {
+      codComp: persona.competidor.codComp,
+      estadoInscripcion: inscripcion?.estadoInscripcion || null,
+      nombre: `${persona.nombre} ${persona.apellidoPaterno}`,
+      carnet: persona.carnet,
+      fechaNac: persona.competidor.fechaNac,
+      celular: persona.celular,
+      emailContacto: inscripcion?.tutor?.persona?.email || null,
+      tutorNombre: inscripcion?.tutor?.persona ? 
+        `${inscripcion.tutor.persona.nombre} ${inscripcion.tutor.persona.apellidoPaterno} ${inscripcion.tutor.persona.apellidoMaterno}` : null,
+      colegio: persona.competidor.colegio,
+      gradoRange: modalidad?.nivelEspecial?.gradoRange || null,
+      fechaInscripcion: inscripcion?.fechaInscripcion || null,
+      area: modalidad?.area?.nombreArea || null,
+      departamento: persona.competidor.municipio?.departamento?.nombreDept || null,
+      municipio: persona.competidor.municipio?.nombreMun || null,
+      estadoPago: inscripcion?.pago?.estadoPago || null,
+    };
+
+    res.json(response);
+  } catch (error) {
+    console.error('Error al obtener competidor:', error);
+    res.status(500).json({ message: 'Error interno del servidor.' });
+  }
+};
 
 module.exports = {
     getCompetidores,
     getComptByTutor,
     getEstadoCompetidores,
     actualizarEstado,
+    getComptByEmailCarnet,
 }
