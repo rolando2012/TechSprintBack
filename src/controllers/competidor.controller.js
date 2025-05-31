@@ -234,14 +234,6 @@ const getComptByEmailCarnet = async (req, res) => {
       return res.status(400).json({ message: 'El tutor debe ser un número entero.' });
       }
 
-    const area = await prisma.tutor.findUnique({
-        select:{
-            area:true
-        },where:{
-            codPer: id
-        }
-    })
-
   try {
     const persona = await prisma.persona.findFirst({
       where: {
@@ -251,11 +243,9 @@ const getComptByEmailCarnet = async (req, res) => {
           is:{
             inscripciones:{
               some: {
-                modalidad: {
-                area: {
-                  nombreArea: area.area.nombreArea,
+                tutor:{
+                  codPer: id
                 }
-              }
             }
           }
           }
