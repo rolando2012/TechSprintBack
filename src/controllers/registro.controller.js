@@ -173,37 +173,48 @@ const getTutores = async (req, res) => {
     res.json(flattenedTutores);
 };
 
-const regCompetidor = async (req, res) => {
-  try {
+const regCompetidor = async (req, res) => {try {
+    // 0) Imprimimos el body para debugear (quítalo en producción)
+    console.log('=== regCompetidorMultiple recibe esto en req.body: ===');
+    console.log(JSON.stringify(req.body, null, 2));
+    console.log('========================================================');
+
+    // 1) Desestructuramos exactamente lo que el frontend envía:
     const {
       persona,
       fechaNac,
       codMun,
       colegio,
       grado,
-      tutorId,
-      areas, // arreglo de { area: string, nivel: string }
+      areas,              // Array<{ area: string; nivel: string }>
+      tutorAssignments    // Record<string, { codTut: string; nombre: string }>
     } = req.body;
 
+    // 2) Validaciones preliminares
+    if (!persona || typeof persona !== 'object') {
+      return res.status(400).json({ error: 'Falta el objeto "persona"' });
+    }
     if (!Array.isArray(areas) || areas.length === 0) {
-      return res.status(400).json({ error: 'Debe enviar al menos un área para inscripción.' });
+      return res.status(400).json({ error: 'Debes enviar un array "areas"' });
+    }
+    if (!tutorAssignments || typeof tutorAssignments !== 'object') {
+      return res.status(400).json({ error: 'Falta el objeto "tutorAssignments"' });
     }
 
-    // Iniciamos la transacción
+    // 3) Iniciamos la transacción Prisma
     const resultado = await prisma.$transaction(async (tx) => {
-      // ──── 1) Hacemos UPSERT de Persona based en email ────
-      // Convertimos el email a minúsculas para evitar problemas de colación
+      // ──── 3.1) Upsert de Persona ────
+      // Convertimos email a minúsculas para uniformizar
       const emailNormalizado = persona.email.toLowerCase();
 
       const per = await tx.persona.upsert({
         where: { email: emailNormalizado },
         update: {
           nombre:           persona.nombre,
-          apellidoPaterno:  persona.apellidoPaterno,
+          apellidoPaterno:  persona.apellidoPaterno,  // ya viene separado
           apellidoMaterno:  persona.apellidoMaterno,
           celular:          persona.celular,
           carnet:           persona.carnet,
-          // (si tienes más campos en Persona, agréguelos aquí)
         },
         create: {
           email:             emailNormalizado,
@@ -212,18 +223,16 @@ const regCompetidor = async (req, res) => {
           apellidoMaterno:   persona.apellidoMaterno,
           celular:           persona.celular,
           carnet:            persona.carnet
-          // (y cualquier otro campo obligatorio en Persona)
         }
       });
 
-      // ──── 2) Upsert UserN y asignar rol “Competidor” (codRol = 4) ────
+      // ──── 3.2) Upsert en UserN y UserNRol (rol Competidor = 4) ────
       const passwHash = await bcrypt.hash('1234', 10);
       const user = await tx.userN.upsert({
         where: { codPer: per.codPer },
         update: { passwUser: passwHash },
         create: { codPer: per.codPer, passwUser: passwHash }
       });
-
       await tx.userNRol.upsert({
         where: {
           codUserN_codRol: {
@@ -238,8 +247,8 @@ const regCompetidor = async (req, res) => {
         }
       });
 
-      // ──── 3) Obtenemos la competencia activa para la gestión actual ────
-      const gestion = new Date().getFullYear(); // e.g. 2025
+      // ──── 3.3) Obtenemos la competencia activa (gestión actual) ────
+      const gestion = new Date().getFullYear();
       const comp = await tx.competencia.findFirst({
         where: { gestion },
         select: { codCompet: true, costo: true }
@@ -248,21 +257,30 @@ const regCompetidor = async (req, res) => {
         throw new Error(`No hay competencia activa para la gestión ${gestion}.`);
       }
 
-      // ──── 4) Verificamos que el tutor exista ────
-      const tutorRec = await tx.tutor.findUnique({
-        where: { codTut: tutorId },
-        select: { codTut: true }
-      });
-      if (!tutorRec) {
-        throw new Error(`Tutor no encontrado (codTut: ${tutorId}).`);
-      }
-
-      // ──── 5) Por cada { area, nivel } en el arreglo, hacemos: 
-      //      a) buscar modalId, b) upsert en Competidor, c) crear Inscripción, d) crear Pago ────
+      // 3.4) Recorrer cada área y nivel
       const inscripcionesCreadas = [];
 
       for (const { area: nombreArea, nivel } of areas) {
-        // 5.a) Buscar el área
+        // 3.4.a) Validar que exista asignación de tutor para esta área
+        const asignacion = tutorAssignments[nombreArea];
+        if (!asignacion) {
+          throw new Error(`No existe "tutorAssignments['${nombreArea}']".`);
+        }
+        const tutorId = Number(asignacion.codTut);
+        if (isNaN(tutorId)) {
+          throw new Error(`codTut inválido para área '${nombreArea}'.`);
+        }
+
+        // 3.4.b) Verificar que el tutor exista
+        const tutorRec = await tx.tutor.findUnique({
+          where: { codTut: tutorId },
+          select: { codTut: true }
+        });
+        if (!tutorRec) {
+          throw new Error(`Tutor no encontrado (codTut: ${tutorId}) para el área '${nombreArea}'.`);
+        }
+
+        // 3.4.c) Verificar que el área exista
         const areaRec = await tx.area.findUnique({
           where: { nombreArea }
         });
@@ -270,27 +288,25 @@ const regCompetidor = async (req, res) => {
           throw new Error(`Área no encontrada: ${nombreArea}`);
         }
 
-        // 5.b) Determinar codModal y nivelVal (misma lógica del código original)
+        // 3.4.d) Determinar codModal y nivelVal (misma lógica “regular / especial”)
         let codModal = null;
         let nivelVal = null;
 
-        // 5.b.i) Intentamos modalidad “regular” (Primaria / Secundaria)
+        // Modalidad “regular” (Primaria / Secundaria)
         const m = nivel.match(/^(\d+)(?:ro|to)?\s+(Primaria|Secundaria)$/i);
         if (m) {
           const numero = parseInt(m[1], 10);
           const ciclo = m[2].toUpperCase();
           nivelVal = numero;
-
           const gradoRec = await tx.grado.findUnique({
             where: { numero_ciclo: { numero, ciclo } }
           });
-
           if (gradoRec) {
             const modalReg = await tx.modalidadCompetencia.findFirst({
               where: {
                 codCompet: comp.codCompet,
-                codArea: areaRec.codArea,
-                codGrado: gradoRec.codGrado
+                codArea:   areaRec.codArea,
+                codGrado:  gradoRec.codGrado
               }
             });
             if (modalReg) {
@@ -299,14 +315,12 @@ const regCompetidor = async (req, res) => {
           }
         }
 
-        // 5.b.ii) Si no hallamos modalidad “regular”, buscamos nivel especial
+        // Modalidad “especial” (si no encontramos una regular)
         if (!codModal) {
-          // Primero intentamos un findExacto
           let ne = await tx.nivelEspecial.findUnique({
             where: { nombreNivel: nivel }
           });
           if (!ne) {
-            // Si no hay match exacto, filtramos todos los de esa área y buscamos coincidencias
             const especiales = await tx.nivelEspecial.findMany({
               where: { codArea: areaRec.codArea }
             });
@@ -322,20 +336,19 @@ const regCompetidor = async (req, res) => {
           if (!ne) {
             throw new Error(`No existe nivelEspecial para '${nivel}' en el área ${nombreArea}`);
           }
-
           nivelVal = ne.codNivel;
           let modalEsp = await tx.modalidadCompetencia.findFirst({
             where: {
-              codCompet: comp.codCompet,
-              codArea: areaRec.codArea,
+              codCompet:      comp.codCompet,
+              codArea:        areaRec.codArea,
               codNivelEspecial: ne.codNivel
             }
           });
           if (!modalEsp) {
             modalEsp = await tx.modalidadCompetencia.create({
               data: {
-                codCompet: comp.codCompet,
-                codArea: areaRec.codArea,
+                codCompet:        comp.codCompet,
+                codArea:          areaRec.codArea,
                 codNivelEspecial: ne.codNivel
               }
             });
@@ -347,7 +360,7 @@ const regCompetidor = async (req, res) => {
           throw new Error(`No se pudo determinar la modalidad para inscripción en área ${nombreArea}`);
         }
 
-        // 5.c) Upsert en Competidor (basado en codPer)
+        // 3.4.e) Upsert en Competidor (basado en codPer)
         const compRec = await tx.competidor.upsert({
           where: { codPer: per.codPer },
           update: {
@@ -357,65 +370,65 @@ const regCompetidor = async (req, res) => {
             nivel: nivelVal
           },
           create: {
-            codPer: per.codPer,
-            fechaNac: new Date(fechaNac),
+            codPer:      per.codPer,
+            fechaNac:    new Date(fechaNac),
             codMun,
             colegio,
             grado,
-            nivel: nivelVal
+            nivel:       nivelVal
           }
         });
 
-        // 5.d) Crear Inscripción
+        // 3.4.f) Crear Inscripción para esta área con su tutor
         const ins = await tx.inscripcion.create({
           data: {
-            codModal: codModal,
-            codTutor: tutorRec.codTut,
-            codCompet: comp.codCompet,
-            codComp: compRec.codComp,
+            codModal:         codModal,
+            codTutor:         tutorRec.codTut,
+            codCompet:        comp.codCompet,
+            codComp:          compRec.codComp,
             estadoInscripcion: 'Pendiente',
-            fechaInscripcion: new Date()
+            fechaInscripcion:  new Date()
           }
         });
 
-        // 5.e) Crear Pago asociado
+        // 3.4.g) Crear Pago asociado
         await tx.pago.create({
           data: {
-            codIns: ins.codIns,
-            monto: comp.costo,
+            codIns:    ins.codIns,
+            monto:     comp.costo,
             estadoPago: 'Pendiente',
-            fechaPago: new Date()
+            fechaPago:  new Date()
           }
         });
 
         inscripcionesCreadas.push({
-          codIns: ins.codIns,
+          codIns:   ins.codIns,
           codModal,
-          codComp: compRec.codComp,
+          codComp:  compRec.codComp,
+          codTutor: tutorRec.codTut
         });
-      }
+      } // fin del for de cada área
 
-      // 6) Retornamos un objeto con todos los datos de inscripciones
+      // 4) Devolver un objeto de respuesta
       return {
         persona: {
           codPer: per.codPer,
-          email: per.email
+          email:  per.email
         },
         inscripciones: inscripcionesCreadas,
         mensaje: `Se inscribió correctamente en ${areas.length} área(s).`
       };
-    }); // fin $transaction
+    }); // fin de prisma.$transaction
 
-    // Si todo salió bien, devolvemos 201 + resultado
+    // 5) Responder con estatus 201 y el resultado
     return res.status(201).json(resultado);
 
   } catch (error) {
     console.error('[regCompetidorMultiple]', error);
-    // Si es Error lanzado con throw new Error(…) en lógica, lo capturamos aquí y devolvemos 400
-    return res.status(400).json({ error: error.message });
+    const mensaje = error instanceof Error ? error.message : 'Error desconocido';
+    return res.status(400).json({ error: mensaje });
   }
 };
-
 module.exports = {
     getDepartamentos,
     getMunicipios,
