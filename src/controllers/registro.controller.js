@@ -176,11 +176,17 @@ const getTutores = async (req, res) => {
 const regCompetidor = async (req, res) => {
   try {
     const result = await prisma.$transaction(async (tx) => {
-      // 0) Cargar la competencia activa
-      const comp = await tx.competencia.findFirst({ where: { gestion: 2025 } });
-      if (!comp) throw new Error('Competencia no encontrada para gestión 2025');
+      // *** 0) Definimos la gestión como el año actual (2025) ***
+      const gestion = new Date().getFullYear(); // == 2025
 
-      // 1) Desestructurar body
+      // 1) Cargar la competencia activa para esa gestión, obteniendo también el costo
+      const comp = await tx.competencia.findFirst({
+        where: { gestion },
+        select: { codCompet: true, costo: true }
+      });
+      if (!comp) throw new Error(`Competencia no encontrada para gestión ${gestion}`);
+
+      // 2) Desestructurar body
       const {
         persona,
         fechaNac,
@@ -192,18 +198,22 @@ const regCompetidor = async (req, res) => {
         area: nombreArea
       } = req.body;
 
-      // 2) Upsert Persona usando email (único)
-      let per = await tx.persona.findUnique({ where: { email: persona.email } });
+      // 3) Upsert Persona usando email (único)
+      let per = await tx.persona.findUnique({
+        where: { email: persona.email }
+      });
       if (per) {
         per = await tx.persona.update({
           where: { codPer: per.codPer },
           data: { ...persona }
         });
       } else {
-        per = await tx.persona.create({ data: { ...persona } });
+        per = await tx.persona.create({
+          data: { ...persona }
+        });
       }
 
-      // 3) Upsert UserN y asignar rol Competidor
+      // 4) Upsert UserN y asignar rol Competidor (codRol = 4)
       const passwHash = await bcrypt.hash('1234', 10);
       const user = await tx.userN.upsert({
         where: { codPer: per.codPer },
@@ -216,71 +226,111 @@ const regCompetidor = async (req, res) => {
         create: { codUserN: user.codUserN, codRol: 4 }
       });
 
-      // 4) Buscar el área
-      const areaRec = await tx.area.findUnique({ where: { nombreArea } });
+      // 5) Buscar el área por nombreArea
+      const areaRec = await tx.area.findUnique({
+        where: { nombreArea }
+      });
       if (!areaRec) throw new Error(`Área no encontrada: ${nombreArea}`);
 
-      // 5) Determinar codModal y nivelVal
+      // 6) Determinar codModal y nivelVal
       let codModal;
       let nivelVal;
 
-      // 5.a) Modalidad regular
+      // 6.a) Modalidad regular (Primaria/Secundaria)
       const m = nivel.match(/^(\d+)(?:ro|to)?\s+(Primaria|Secundaria)$/i);
       if (m) {
         const numero = parseInt(m[1], 10);
         const ciclo = m[2].toUpperCase();
         nivelVal = numero;
-        const gradoRec = await tx.grado.findUnique({ where: { numero_ciclo: { numero, ciclo } } });
+        const gradoRec = await tx.grado.findUnique({
+          where: { numero_ciclo: { numero, ciclo } }
+        });
         if (gradoRec) {
           const modalReg = await tx.modalidadCompetencia.findFirst({
-            where: { codCompet: comp.codCompet, codArea: areaRec.codArea, codGrado: gradoRec.codGrado }
+            where: {
+              codCompet: comp.codCompet,
+              codArea: areaRec.codArea,
+              codGrado: gradoRec.codGrado
+            }
           });
-          if (modalReg) codModal = modalReg.codModal;
+          if (modalReg) {
+            codModal = modalReg.codModal;
+          }
         }
       }
 
-      // 5.b) Nivel especial
+      // 6.b) Nivel especial (si no hubo modalidad regular)
       if (!codModal) {
-        let ne = await tx.nivelEspecial.findUnique({ where: { nombreNivel: nivel } });
+        let ne = await tx.nivelEspecial.findUnique({
+          where: { nombreNivel: nivel }
+        });
         if (!ne) {
-          const especiales = await tx.nivelEspecial.findMany({ where: { codArea: areaRec.codArea } });
+          const especiales = await tx.nivelEspecial.findMany({
+            where: { codArea: areaRec.codArea }
+          });
           ne = especiales.find(e =>
             e.nombreNivel.toLowerCase() === nivel.toLowerCase() ||
             e.gradoRange.toLowerCase().includes(nivel.toLowerCase())
           );
         }
-        if (!ne) throw new Error(`No existe nivelEspecial para '${nivel}' en ${nombreArea}`);
+        if (!ne) {
+          throw new Error(`No existe nivelEspecial para '${nivel}' en ${nombreArea}`);
+        }
         nivelVal = ne.codNivel;
         let modalEsp = await tx.modalidadCompetencia.findFirst({
-          where: { codCompet: comp.codCompet, codArea: areaRec.codArea, codNivelEspecial: ne.codNivel }
+          where: {
+            codCompet: comp.codCompet,
+            codArea: areaRec.codArea,
+            codNivelEspecial: ne.codNivel
+          }
         });
         if (!modalEsp) {
           modalEsp = await tx.modalidadCompetencia.create({
-            data: { codCompet: comp.codCompet, codArea: areaRec.codArea, codNivelEspecial: ne.codNivel }
+            data: {
+              codCompet: comp.codCompet,
+              codArea: areaRec.codArea,
+              codNivelEspecial: ne.codNivel
+            }
           });
         }
         codModal = modalEsp.codModal;
       }
 
-      // 6) Upsert Competidor
+      // 7) Upsert Competidor
       const compRec = await tx.competidor.upsert({
         where: { codPer: per.codPer },
-        create: { codPer: per.codPer, fechaNac: new Date(fechaNac), codMun, colegio, grado, nivel: nivelVal },
-        update: { fechaNac: new Date(fechaNac), codMun, colegio, nivel: nivelVal }
+        create: {
+          codPer: per.codPer,
+          fechaNac: new Date(fechaNac),
+          codMun,
+          colegio,
+          grado,
+          nivel: nivelVal
+        },
+        update: {
+          fechaNac: new Date(fechaNac),
+          codMun,
+          colegio,
+          nivel: nivelVal
+        }
       });
 
-      // Validaciones finales
-      if (!codModal) throw new Error('No se pudo determinar la modalidad para inscripción');
-      const tutorRec = await tx.tutor.findUnique({ 
+      // 8) Validaciones finales
+      if (!codModal) {
+        throw new Error('No se pudo determinar la modalidad para inscripción');
+      }
+      const tutorRec = await tx.tutor.findUnique({
         where: { codTut: tutorId },
         select: { codTut: true }
-       });
-      if (!tutorRec) throw new Error(`Tutor no encontrado (codTut: ${tutorId})`);
+      });
+      if (!tutorRec) {
+        throw new Error(`Tutor no encontrado (codTut: ${tutorId})`);
+      }
 
-      // 7) Crear Inscripción
+      // 9) Crear Inscripción
       const ins = await tx.inscripcion.create({
         data: {
-          codModal,
+          codModal: codModal,
           codTutor: tutorRec.codTut,
           codCompet: comp.codCompet,
           codComp: compRec.codComp,
@@ -289,18 +339,35 @@ const regCompetidor = async (req, res) => {
         }
       });
 
-      return { competidor: compRec, inscripcion: ins };
+      // 10) Crear Pago asociado, usando el costo de la competencia
+      //     - codIns: ins.codIns (FK a Inscripcion)
+      //     - monto: comp.costo
+      //     - estadoPago inicial "Pendiente"
+      //     - fechaPago hoy
+      await tx.pago.create({
+        data: {
+          codIns: ins.codIns,
+          monto: comp.costo,
+          estadoPago: 'Pendiente',
+          fechaPago: new Date()
+        }
+      });
+
+      return {
+        competidor: compRec,
+        inscripcion: ins,
+        pagoCreado: true
+      };
     });
 
-    // Responder éxito
+    // Si llegamos aquí, la transacción se completó sin errores
     return res.status(201).json(result);
   } catch (error) {
     console.error('[regCompetidor]', error);
-    // Rollback automático por transaction
+    // El rollback se hace automáticamente al lanzar excepción dentro de $transaction
     return res.status(400).json({ error: error.message });
   }
 };
-
 
 
 module.exports = {

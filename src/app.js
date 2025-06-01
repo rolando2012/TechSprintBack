@@ -7,6 +7,7 @@ const competidor = require('./routes/competidor.routes');
 const registro = require('./routes/registro.routes');
 const authRoutes = require('./routes/auth.route');
 const administrador = require('./routes/administrador.route')
+const cajero = require('./routes/cajero.route');
 const cookieParser = require('cookie-parser');
 
 const app = express();
@@ -27,6 +28,7 @@ app.use('/api/competidor',competidor);
 app.use('/api/registro',registro);
 app.use('/api/auth', authRoutes);
 app.use('/api/administrador',administrador);
+app.use('/api/cajero',cajero);
 
 
 module.exports = app;
