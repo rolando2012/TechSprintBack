@@ -174,10 +174,6 @@ const getTutores = async (req, res) => {
 };
 
 const regCompetidor = async (req, res) => {try {
-    // 0) Imprimimos el body para debugear (quítalo en producción)
-    console.log('=== regCompetidorMultiple recibe esto en req.body: ===');
-    console.log(JSON.stringify(req.body, null, 2));
-    console.log('========================================================');
 
     // 1) Desestructuramos exactamente lo que el frontend envía:
     const {
@@ -429,6 +425,26 @@ const regCompetidor = async (req, res) => {try {
     return res.status(400).json({ error: mensaje });
   }
 };
+
+const checkEmail = async (req, res) => {
+  try {
+    const email = req.query.email;
+    if (!email || typeof email !== 'string') {
+      return res.status(400).json({ error: 'Parámetro email es obligatorio' });
+    }
+
+    const persona = await prisma.persona.findUnique({
+      where: { email: email },
+      select: { codPer: true },
+    });
+
+    res.json({ exists: !!persona });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error interno en el servidor' });
+  }
+};
+
 module.exports = {
     getDepartamentos,
     getMunicipios,
@@ -438,4 +454,5 @@ module.exports = {
     regCompetidor,
     getCosto,
     getMunicipiosByName,
+    checkEmail,
 }
