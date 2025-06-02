@@ -33,6 +33,7 @@ const getComptAprobados = async (req, res) => {
             inscripciones: {
               take: 1,
               select: {
+                codIns: true,
                 estadoInscripcion: true,
                 fechaInscripcion: true,
                 modalidad: {
@@ -72,9 +73,10 @@ const getComptAprobados = async (req, res) => {
       ) {
         gradoRange = inscrip.modalidad.nivelEspecial.gradoRange;
       }
-
+     
       return {
         codComp: persona.competidor.codComp,
+        codIns: inscrip.codIns,
         nombre,
         apellidoPaterno,
         carnet,
@@ -171,7 +173,7 @@ const getComptHabilitados = async (req, res) => {
       ) {
         gradoRange = inscrip.modalidad.nivelEspecial.gradoRange;
       }
-
+      
       const pago = inscrip.pagos[0] || {};
       return {
         codComp: persona.competidor.codComp,
@@ -238,8 +240,41 @@ const getPagoStats = async (req, res) => {
   }
 };
 
+const actualizarPago =async (req, res) => {
+  try {
+    // 1. Obtenemos codIns desde los parámetros de la ruta
+    const codInsParam = parseInt(req.params.codIns, 10);
+    if (isNaN(codInsParam)) {
+      return res.status(400).json({ error: 'codIns inválido' });
+    }
+
+    // 2. Realizamos el updateMany para todos los registros cuyo codIns coincida
+    const result = await prisma.pago.updateMany({
+      where: { codIns: codInsParam },
+      data: { estadoPago: 'Pagado' },
+    });
+
+    // result.count es la cantidad de filas afectadas
+    if (result.count === 0) {
+      return res.status(404).json({
+        message: `No se encontró ningún Pago con codIns = ${codInsParam}`,
+      });
+    }
+
+    // 3. Devolver respuesta con la cantidad de pagos actualizados
+    return res.json({
+      message: `Se actualizó a 'pagado' el estado de ${result.count} pago(s) con codIns = ${codInsParam}.`,
+      updatedCount: result.count,
+    });
+  } catch (error) {
+    console.error('Error actualizando estadoPago:', error);
+    return res.status(500).json({ error: 'Error interno al actualizar estadoPago' });
+  }
+};
+
 module.exports ={
     getComptAprobados,
     getComptHabilitados,
     getPagoStats,
+    actualizarPago,
 }
