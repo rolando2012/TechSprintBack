@@ -223,7 +223,7 @@ const regCompetidor = async (req, res) => {try {
       });
 
       // ──── 3.2) Upsert en UserN y UserNRol (rol Competidor = 4) ────
-      const passwHash = await bcrypt.hash('1234', 10);
+      const passwHash = await bcrypt.hash(persona.carnet, 10);
       const user = await tx.userN.upsert({
         where: { codPer: per.codPer },
         update: { passwUser: passwHash },
