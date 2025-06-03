@@ -354,6 +354,7 @@ const getComptByEmailCarnet = async (req, res) => {
 
     const inscripcion = persona.competidor?.inscripciones[0];
     const modalidad = inscripcion?.modalidad;
+    
 
     const response = {
       codComp: persona.competidor.codComp,
@@ -371,7 +372,7 @@ const getComptByEmailCarnet = async (req, res) => {
       area: modalidad?.area?.nombreArea || null,
       departamento: persona.competidor.municipio?.departamento?.nombreDept || null,
       municipio: persona.competidor.municipio?.nombreMun || null,
-      estadoPago: inscripcion?.pago?.estadoPago || null,
+      estadoPago: inscripcion.pagos[0].estadoPago || null,
     };
 
     res.json(response);
