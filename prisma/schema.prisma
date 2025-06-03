@@ -194,6 +194,7 @@ model Inscripcion {
   estadoInscripcion String   @db.VarChar(10)
   fechaInscripcion  DateTime @db.Date
   codComp           Int      @db.Integer
+  motivoRechazo     String?  @db.VarChar(255)
 
   modalidad   ModalidadCompetencia @relation(fields: [codModal], references: [codModal])
   tutor       Tutor                @relation(fields: [codTutor], references: [codTut])

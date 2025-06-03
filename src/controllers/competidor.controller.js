@@ -16,51 +16,59 @@ const getComptByTutor = async (req, res) => {
     })
     
     const competidores = await prisma.persona.findMany({
-        where: {
-            competidor: {
-            inscripciones: {
-                some: { codTutor: idTutor.codTut }
-            }
-            }
-        },
-        select: {
-            nombre: true,
-            apellidoPaterno: true,
-            carnet: true,
-            competidor: {
-            select: {
-                codComp: true,
-                colegio: true,
-                nivel: true,
-                inscripciones: {
-                select: {
-                    estadoInscripcion:true,
-                    fechaInscripcion: true,
-                    modalidad: {
-                    select: {
-                        area: {
-                        select: { nombreArea: true }
-                        },
-                        grado: {
-                        select: {
-                            numero: true,
-                            ciclo: true
-                        }
-                        },
-                        nivelEspecial: {
-                        select: {
-                            nombreNivel: true,
-                            gradoRange: true
-                        }
-                        }
-                    }
-                    }
+  where: {
+    competidor: {
+      inscripciones: {
+        some: { codTutor: idTutor.codTut }
+      }
+    }
+  },
+  select: {
+    nombre:         true,
+    apellidoPaterno:true,
+    carnet:         true,
+    competidor: {
+      select: {
+        codComp: true,
+        colegio: true,
+        // si no necesitas “nivel” dentro del objeto final, puedes quitarlo:
+        // nivel:   true,
+        inscripciones: {
+          where: {
+            codTutor: idTutor.codTut
+          },
+          orderBy: { fechaInscripcion: 'desc' },
+          take: 1,
+          select: {
+            codIns: true,
+            estadoInscripcion: true,
+            fechaInscripcion:  true,
+            modalidad: {
+              select: {
+                area: {
+                  select: { nombreArea: true }
+                },
+                grado: {
+                  select: {
+                    numero: true,
+                    ciclo:  true
+                  }
+                },
+                nivelEspecial: {
+                  select: {
+                    nombreNivel:  true,
+                    gradoRange:   true
+                  }
                 }
-                }
+              }
             }
-            }
+          }
         }
-        });
+      }
+    }
+  }
+});
+
         
         const flattenedCompetidores = competidores.map((persona) => {
             const { nombre, apellidoPaterno, carnet } = persona;
@@ -78,12 +86,14 @@ const getComptByTutor = async (req, res) => {
                     persona.competidor.inscripciones[0].modalidad.nivelEspecial.gradoRange;
                 }
                 codComp = persona.competidor.codComp;
+                codIns = persona.competidor.inscripciones[0].codIns;
                 colegio = persona.competidor.colegio;
                 estadoInscripcion = persona.competidor.inscripciones[0].estadoInscripcion;
                 fechaInscripcion = persona.competidor.inscripciones[0].fechaInscripcion;
                 area = persona.competidor.inscripciones[0].modalidad.area.nombreArea;
                 return {
                 codComp,
+                codIns,
                 nombre,
                 apellidoPaterno,
                 carnet,
@@ -186,12 +196,11 @@ const getCompetidores = async (req, res) => {
     res.json(datosInscripcion);
 }
 
-// Estados válidos
 const VALID_ESTADOS = ['Pendiente', 'Aceptado', 'Rechazado', 'Verificado'];
 
 const actualizarEstado = async (req, res) => {
   const codIns = parseInt(req.params.id, 10);
-  const { estado } = req.body;
+  const { estado, motivoRechazo } = req.body;
 
   // 1. Validaciones básicas
   if (isNaN(codIns)) {
@@ -203,28 +212,48 @@ const actualizarEstado = async (req, res) => {
     });
   }
 
+  // 2. Validación extra si el estado es "Rechazado"
+  if (estado === 'Rechazado') {
+    if (!motivoRechazo || typeof motivoRechazo !== 'string' || motivoRechazo.trim() === '') {
+      return res.status(400).json({
+        message: 'Cuando el estado es "Rechazado", debe proporcionarse un motivo de rechazo no vacío.'
+      });
+    }
+  }
+
   try {
-    // 2. Intentamos el update
+    // 3. Preparamos el objeto `data` para el update
+    const dataToUpdate = {
+      estadoInscripcion: estado
+      // No agregamos `motivoRechazo` aquí todavía
+    };
+
+    if (estado === 'Rechazado') {
+      // Solo agregamos motivoRechazo cuando el estado es Rechazado
+      dataToUpdate.motivoRechazo = motivoRechazo.trim();
+    } else {
+      dataToUpdate.motivoRechazo = null; 
+    }
+
+    // 4. Ejecutamos el update
     const updated = await prisma.inscripcion.update({
       where: { codIns },
-      data: { estadoInscripcion: estado }
+      data: dataToUpdate,
     });
 
-    // 3. Si todo salió bien, devolvemos la inscripción actualizada
     return res.json({
       message: 'Estado de inscripción actualizado correctamente.',
-      //inscripcion: updated
+      inscripcion: updated
     });
   } catch (error) {
-    // 4. Manejo de errores
     if (error.code === 'P2025') {
-      // Prisma error: registro no encontrado
       return res.status(404).json({ message: 'Inscripción no encontrada.' });
     }
     console.error(error);
     return res.status(500).json({ message: 'Error al actualizar la inscripción.' });
   }
 };
+
 
 const getComptByEmailCarnet = async (req, res) => {
   const { carnet, email } = req.body;
