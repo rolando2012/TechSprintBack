@@ -304,6 +304,7 @@ const getComptByEmailCarnet = async (req, res) => {
               select: {
                 estadoInscripcion: true,
                 fechaInscripcion: true,
+                motivoRechazo: true,
                 tutor: {
                   select: {
                     persona: {
@@ -373,6 +374,7 @@ const getComptByEmailCarnet = async (req, res) => {
       departamento: persona.competidor.municipio?.departamento?.nombreDept || null,
       municipio: persona.competidor.municipio?.nombreMun || null,
       estadoPago: inscripcion.pagos[0].estadoPago || null,
+      motivoRechazo: inscripcion?.motivoRechazo || null,
     };
 
     res.json(response);
