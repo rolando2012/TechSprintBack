@@ -212,8 +212,101 @@ const getCompByPersonaAndArea = async (req, res) => {
   }
 };
 
+const getInfo = async (req, res) => {
+  try {
+    const info = await getEtapaInfoGeneral();
+    if (!info) {
+      return res.status(200).json({ etapaInfo: null });
+    }
+    // Si info existe, devolvemos directamente los tres campos
+    return res.status(200).json(info);
+  } catch (error) {
+    console.error("[GET /competencia/etapa-info-general] Error:", error);
+    return res.status(500).json({ error: "Error interno del servidor" });
+  }
+}
+
+async function getEtapaInfoGeneral() {
+  // 1. Obtenemos la fecha/hora actual en UTC
+  const ahora = new Date();
+
+  // 2. Filtramos por fecha (sin hora) para ver en qué día estamos
+  const hoyUTC = new Date(Date.UTC(
+    ahora.getUTCFullYear(),
+    ahora.getUTCMonth(),
+    ahora.getUTCDate()
+  ));
+  // 3. Buscamos la PRIMERA EtapaCompetencia cuyo rango de fechas contenga "hoyUTC"
+  //    Para acotar la búsqueda, usamos:
+  //       fechaInicio <= hoyUTC <= fechaFin
+  const posibleEtapa = await prisma.etapaCompetencia.findFirst({
+    where: {
+      fechaInicio: { lte: hoyUTC },
+      fechaFin:    { gte: hoyUTC },
+    },
+    include: {
+      competencia: true, // Así podemos conocer el nombre de la competencia
+    },
+  });
+
+  // 4. Si no hay resultado, no hay etapa activa ningún día (en ningún horario),
+  //    o bien la “fecha” encaja pero la hora actual está fuera de horario para esa etapa.
+  if (!posibleEtapa) {
+    return null;
+  }
+
+  // 5. Ahora sí comprobamos la hora exacta: armamos dos Date en UTC:
+  //     - start: fechaInicio + horaInicio
+  //     - end:   fechaFin    + horaFin
+  const { fechaInicio, horaInicio, fechaFin, horaFin, codCompetencia } = posibleEtapa;
+
+  const start = new Date(Date.UTC(
+    fechaInicio.getUTCFullYear(),
+    fechaInicio.getUTCMonth(),
+    fechaInicio.getUTCDate(),
+    horaInicio.getUTCHours(),
+    horaInicio.getUTCMinutes(),
+    horaInicio.getUTCSeconds()
+  ));
+  const end = new Date(Date.UTC(
+    fechaFin.getUTCFullYear(),
+    fechaFin.getUTCMonth(),
+    fechaFin.getUTCDate(),
+    horaFin.getUTCHours(),
+    horaFin.getUTCMinutes(),
+    horaFin.getUTCSeconds()
+  ));
+
+  // 6. Si “ahora” está FUERA de ese rango horario, devolvemos null (no hay etapa activa).
+  if (!(ahora >= start && ahora <= end)) {
+    return null;
+  }
+
+  // 7. Si llegamos hasta aquí, tenemos “posibleEtapa” como la etapa activa.
+  //    Lo llamamos etapaActiva y obtenemos el nombre de la competencia:
+  const etapaActiva = posibleEtapa; 
+  const competenciaNombre = posibleEtapa.competencia.nombreCompet;
+
+  // 8. Ahora buscamos, dentro de la misma competencia, la etapa cuyo
+  //    nombre sea “Pago de Inscripciones” (para saber cuándo arranca),
+  //    sin importar si está activa o no todavía:
+  const pagoEtapa = await prisma.etapaCompetencia.findFirst({
+    where: {
+      codCompetencia: codCompetencia,
+      nombreEtapa:    "Pago de Inscripciones",
+    },
+  });
+
+  return {
+    competenciaNombre,
+    etapaActiva,
+    pagoEtapa: pagoEtapa || null,
+  };
+}
+
 
 module.exports ={
     getAreaByCompetidor,
     getCompByPersonaAndArea,
+    getInfo,
 }

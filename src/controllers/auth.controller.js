@@ -55,12 +55,12 @@ const loginUser = async (req, res) => {
       
 
     try{
-        const token = jwt.sign({ id: user.codPer, name: user.nombre, rol: rl.nombreRol}, config.app.jwt, { expiresIn: '1d' });
+        const token = jwt.sign({ id: user.codPer, name: user.nombre, rol: rl.nombreRol}, config.app.jwt, { expiresIn: '90d' });
         res.cookie('access_token',token,{
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite:'none',
-            maxAge:60 * 60 * 24,
+            maxAge: 90 * 24 * 60 * 60 * 1000,  // 90 días en milisegundos
         }).send({ token, user: { id: user.codPer, name: user.nombre, email: user.email, rol: rl.nombreRol} }) ;
     }catch(error){
         res.status(401).send(error.message)
