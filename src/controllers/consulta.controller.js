@@ -212,101 +212,47 @@ const getCompByPersonaAndArea = async (req, res) => {
   }
 };
 
-const getInfo = async (req, res) => {
+const getEtapaPago = async (req, res) => {
   try {
-    const info = await getEtapaInfoGeneral();
-    if (!info) {
-      return res.status(200).json({ etapaInfo: null });
+    const ahora = new Date();
+    // 1) Buscar la competencia cuyo rango global incluya ahora:
+    const comp = await prisma.competencia.findFirst({
+      where: {
+        fechaIni:  { lte: ahora },
+        fechaFin:  { gte: ahora },
+      },
+      include: {
+        etapas: {
+          where: { nombreEtapa: "Pago de Inscripciones" },
+          take: 1,
+        },
+      },
+    });
+
+    if (!comp || comp.etapas.length === 0) {
+      return res.status(404).json({ error: "No hay etapa de Pago de Inscripciones disponible." });
     }
-    // Si info existe, devolvemos directamente los tres campos
-    return res.status(200).json(info);
-  } catch (error) {
-    console.error("[GET /competencia/etapa-info-general] Error:", error);
+
+    // Solo nos interesa la primera etapa “Pago de Inscripciones”
+    const pagoEtapa = comp.etapas[0];
+    return res.status(200).json({
+      competenciaNombre: comp.nombreCompet,
+      pagoEtapa: {
+        fechaInicio: pagoEtapa.fechaInicio.toISOString(),  // e.g. "2025-07-15T00:00:00.000Z"
+        horaInicio:  pagoEtapa.horaInicio.toISOString(),   // e.g. "1970-01-01T04:00:00.000Z"
+        fechaFin:    pagoEtapa.fechaFin.toISOString(),
+        horaFin:     pagoEtapa.horaFin.toISOString(),
+      },
+    });
+  } catch (err) {
+    console.error(err);
     return res.status(500).json({ error: "Error interno del servidor" });
   }
-}
-
-async function getEtapaInfoGeneral() {
-  // 1. Obtenemos la fecha/hora actual en UTC
-  const ahora = new Date();
-
-  // 2. Filtramos por fecha (sin hora) para ver en qué día estamos
-  const hoyUTC = new Date(Date.UTC(
-    ahora.getUTCFullYear(),
-    ahora.getUTCMonth(),
-    ahora.getUTCDate()
-  ));
-  // 3. Buscamos la PRIMERA EtapaCompetencia cuyo rango de fechas contenga "hoyUTC"
-  //    Para acotar la búsqueda, usamos:
-  //       fechaInicio <= hoyUTC <= fechaFin
-  const posibleEtapa = await prisma.etapaCompetencia.findFirst({
-    where: {
-      fechaInicio: { lte: hoyUTC },
-      fechaFin:    { gte: hoyUTC },
-    },
-    include: {
-      competencia: true, // Así podemos conocer el nombre de la competencia
-    },
-  });
-
-  // 4. Si no hay resultado, no hay etapa activa ningún día (en ningún horario),
-  //    o bien la “fecha” encaja pero la hora actual está fuera de horario para esa etapa.
-  if (!posibleEtapa) {
-    return null;
-  }
-
-  // 5. Ahora sí comprobamos la hora exacta: armamos dos Date en UTC:
-  //     - start: fechaInicio + horaInicio
-  //     - end:   fechaFin    + horaFin
-  const { fechaInicio, horaInicio, fechaFin, horaFin, codCompetencia } = posibleEtapa;
-
-  const start = new Date(Date.UTC(
-    fechaInicio.getUTCFullYear(),
-    fechaInicio.getUTCMonth(),
-    fechaInicio.getUTCDate(),
-    horaInicio.getUTCHours(),
-    horaInicio.getUTCMinutes(),
-    horaInicio.getUTCSeconds()
-  ));
-  const end = new Date(Date.UTC(
-    fechaFin.getUTCFullYear(),
-    fechaFin.getUTCMonth(),
-    fechaFin.getUTCDate(),
-    horaFin.getUTCHours(),
-    horaFin.getUTCMinutes(),
-    horaFin.getUTCSeconds()
-  ));
-
-  // 6. Si “ahora” está FUERA de ese rango horario, devolvemos null (no hay etapa activa).
-  if (!(ahora >= start && ahora <= end)) {
-    return null;
-  }
-
-  // 7. Si llegamos hasta aquí, tenemos “posibleEtapa” como la etapa activa.
-  //    Lo llamamos etapaActiva y obtenemos el nombre de la competencia:
-  const etapaActiva = posibleEtapa; 
-  const competenciaNombre = posibleEtapa.competencia.nombreCompet;
-
-  // 8. Ahora buscamos, dentro de la misma competencia, la etapa cuyo
-  //    nombre sea “Pago de Inscripciones” (para saber cuándo arranca),
-  //    sin importar si está activa o no todavía:
-  const pagoEtapa = await prisma.etapaCompetencia.findFirst({
-    where: {
-      codCompetencia: codCompetencia,
-      nombreEtapa:    "Pago de Inscripciones",
-    },
-  });
-
-  return {
-    competenciaNombre,
-    etapaActiva,
-    pagoEtapa: pagoEtapa || null,
-  };
-}
+};
 
 
 module.exports ={
     getAreaByCompetidor,
     getCompByPersonaAndArea,
-    getInfo,
+    getEtapaPago,
 }

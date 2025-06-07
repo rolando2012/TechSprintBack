@@ -1,10 +1,10 @@
 const express = require('express');
-const { getAreaByCompetidor, getCompByPersonaAndArea, getInfo } = require('../controllers/consulta.controller');
+const { getAreaByCompetidor, getCompByPersonaAndArea, getEtapaPago } = require('../controllers/consulta.controller');
 
 const router = express.Router();
 
 router.get('/area/:id', getAreaByCompetidor);
 router.post('/detalles/:id', getCompByPersonaAndArea);
-router.get("/competencia/etapa-info-general", getInfo);
+router.get("/competencia/pago-etapa-general", getEtapaPago);
 
 module.exports = router;
