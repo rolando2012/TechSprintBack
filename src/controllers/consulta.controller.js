@@ -250,9 +250,50 @@ const getEtapaPago = async (req, res) => {
   }
 };
 
+const getEtapaValidacion = async (req, res) => {
+  try {
+    const ahora = new Date();
+
+    // Buscar competencia vigente globalmente
+    const comp = await prisma.competencia.findFirst({
+      where: {
+        fechaIni: { lte: ahora },
+        fechaFin: { gte: ahora },
+      },
+      include: {
+        etapas: {
+          where: { nombreEtapa: "Validación de Requisitos" },
+          take: 1,
+        },
+      },
+    });
+
+    if (!comp || comp.etapas.length === 0) {
+      return res
+        .status(404)
+        .json({ error: "No hay etapa de Validación de Requisitos disponible." });
+    }
+
+    const etapa = comp.etapas[0];
+    return res.json({
+      competenciaNombre: comp.nombreCompet,
+      validacionEtapa: {
+        fechaInicio: etapa.fechaInicio.toISOString(),
+        horaInicio: etapa.horaInicio.toISOString(),
+        fechaFin: etapa.fechaFin.toISOString(),
+        horaFin: etapa.horaFin.toISOString(),
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+};
+
 
 module.exports ={
     getAreaByCompetidor,
     getCompByPersonaAndArea,
     getEtapaPago,
+    getEtapaValidacion,
 }
