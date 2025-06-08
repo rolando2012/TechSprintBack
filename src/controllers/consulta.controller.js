@@ -247,14 +247,8 @@ const getEtapaPago = async (req, res) => {
 
 const getEtapaValidacion = async (req, res) => {
   try {
-    const ahora = new Date();
-
-    // Buscar competencia vigente globalmente
+    // Eliminar la validación de fechas de competencia que causaba el problema
     const comp = await prisma.competencia.findFirst({
-      where: {
-        fechaIni: { lte: ahora },
-        fechaFin: { gte: ahora },
-      },
       include: {
         etapas: {
           where: { nombreEtapa: "Validación de Requisitos" },
