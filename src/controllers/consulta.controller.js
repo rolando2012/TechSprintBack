@@ -214,13 +214,8 @@ const getCompByPersonaAndArea = async (req, res) => {
 
 const getEtapaPago = async (req, res) => {
   try {
-    const ahora = new Date();
-    // 1) Buscar la competencia cuyo rango global incluya ahora:
+    // Eliminar la validación de fechas de competencia que causaba el problema
     const comp = await prisma.competencia.findFirst({
-      where: {
-        fechaIni:  { lte: ahora },
-        fechaFin:  { gte: ahora },
-      },
       include: {
         etapas: {
           where: { nombreEtapa: "Pago de Inscripciones" },
@@ -233,7 +228,7 @@ const getEtapaPago = async (req, res) => {
       return res.status(404).json({ error: "No hay etapa de Pago de Inscripciones disponible." });
     }
 
-    // Solo nos interesa la primera etapa “Pago de Inscripciones”
+    // Solo nos interesa la primera etapa "Pago de Inscripciones"
     const pagoEtapa = comp.etapas[0];
     return res.status(200).json({
       competenciaNombre: comp.nombreCompet,
