@@ -290,10 +290,44 @@ const getEtapaValidacion = async (req, res) => {
   }
 };
 
+const getEtapaInscripciones = async (req, res) => {
+  try {
+    // Eliminar la validación de fechas de competencia que causaba el problema
+    const comp = await prisma.competencia.findFirst({
+      include: {
+        etapas: {
+          where: { nombreEtapa: "Inscripciones" },
+          take: 1,
+        },
+      },
+    });
+
+    if (!comp || comp.etapas.length === 0) {
+      return res
+        .status(404)
+        .json({ error: "No hay etapa de Inscripciones disponible." });
+    }
+
+    const etapa = comp.etapas[0];
+    res.json({
+      competenciaNombre: comp.nombreCompet,
+      inscripcionEtapa: {
+        fechaInicio: etapa.fechaInicio.toISOString(),
+        horaInicio: etapa.horaInicio.toISOString(),
+        fechaFin: etapa.fechaFin.toISOString(),
+        horaFin: etapa.horaFin.toISOString(),
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+};
 
 module.exports ={
     getAreaByCompetidor,
     getCompByPersonaAndArea,
     getEtapaPago,
     getEtapaValidacion,
+    getEtapaInscripciones,
 }
