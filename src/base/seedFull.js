@@ -86,7 +86,7 @@ async function main() {
     { area: 'Biología',              nombre: 'Erika Fernández',                  email: 'e.fernandez@umss.edu' },
     { area: 'Física',                nombre: 'Marko Andrade',                    email: 'markoandrade.u@fcyt.umss.edu.bo' },
     { area: 'Informática',           nombre: 'Vladimir Costas',                 email: 'vladimircostas.j@fcyt.umss.edu.bo' },
-    { area: 'Matemáticas',           nombre: 'Vidal Matias',                     email: 'v.matias@fcyt.umss.edu' },
+    { area: 'Matemáticas',           nombre: 'Vidal Matias',                     email: 'v.matias@umss.edu' },
     { area: 'Química',               nombre: 'Boris Moreira',                    email: 'borismoreira.r@fcyt.umss.edu.bo' }
   ];
 
@@ -141,7 +141,7 @@ async function main() {
 
   // Tutor de Robótica
   {
-    const info = { area: 'Robótica', nombre: 'Alex Martinez', email: 'alex.martinez@fcyt.umss.edu.bo' };
+    const info = { area: 'Robótica', nombre: 'Marco Arancibia', email: 'ma.arancibia@umss.edu.bo' };
     const [nombre, ...apellidos] = info.nombre.split(' ');
     const apellidoPaterno = apellidos.slice(0, apellidos.length - 1).join(' ');
     const apellidoMaterno = apellidos.slice(-1)[0];
