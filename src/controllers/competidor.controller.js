@@ -284,6 +284,7 @@ const getComptByEmailCarnet = async (req, res) => {
         nombre: true,
         apellidoPaterno: true,
         apellidoMaterno: true,
+        email: true,
         carnet: true,
         celular: true,
         competidor: {
@@ -362,6 +363,7 @@ const getComptByEmailCarnet = async (req, res) => {
       estadoInscripcion: inscripcion?.estadoInscripcion || null,
       nombre: `${persona.nombre} ${persona.apellidoPaterno}`,
       carnet: persona.carnet,
+      email: persona.email,
       fechaNac: persona.competidor.fechaNac,
       celular: persona.celular,
       emailContacto: inscripcion?.tutor?.persona?.email || null,

@@ -187,7 +187,7 @@ const getCompByPersonaAndArea = async (req, res) => {
       carnet: persona.carnet,
       fechaNac: competidor.fechaNac,
       celular: persona.celular || null,
-      emailContacto: tutorPersona?.email || null,
+      emailContacto: persona?.email || null,
       tutorNombre: tutorPersona
         ? `${tutorPersona.nombre} ${tutorPersona.apellidoPaterno}${
             tutorPersona.apellidoMaterno ? " " + tutorPersona.apellidoMaterno : ""
@@ -313,10 +313,158 @@ const getEtapaInscripciones = async (req, res) => {
   }
 };
 
+// Obtener competencia específica con sus etapas
+async function getCompetenciaById(req, res) {
+  try {
+    const { codComp } = req.params;
+    
+    const competencia = await prisma.competencia.findUnique({
+      where: { codCompet: parseInt(codComp) },
+      include: {
+        etapas: {
+          orderBy: { orden: 'asc' }
+        }
+      }
+    });
+
+    if (!competencia) {
+      return res.status(404).json({ error: 'Competencia no encontrada' });
+    }
+
+    // Formatear respuesta
+    const response = {
+      codCompet: competencia.codCompet.toString(),
+      nombreCompet: competencia.nombreCompet,
+      costo: competencia.costo.toString(),
+      fechaIni: competencia.fechaIni.toISOString().split('T')[0],
+      fechaFin: competencia.fechaFin.toISOString().split('T')[0],
+      gestion: competencia.gestion,
+      etapas: competencia.etapas.map(etapa => ({
+        codEtapa: etapa.codEtapa,
+        nombreEtapa: etapa.nombreEtapa,
+        fechaInicio: etapa.fechaInicio.toISOString().split('T')[0],
+        fechaFin: etapa.fechaFin.toISOString().split('T')[0],
+        orden: etapa.orden,
+        estado: etapa.estado
+      }))
+    };
+
+    res.json(response);
+  } catch (error) {
+    console.error('Error al obtener competencia:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+}
+
+// Actualizar competencia
+async function updateCompetencia(req, res) {
+  try {
+    const { codComp } = req.params;
+    const { nombreCompet, costo, etapas } = req.body;
+
+    // Validar que la competencia existe
+    const competenciaExistente = await prisma.competencia.findUnique({
+      where: { codCompet: parseInt(codComp) },
+      include: {
+        etapas: {
+          orderBy: { orden: 'asc' }
+        }
+      }
+    });
+
+    if (!competenciaExistente) {
+      return res.status(404).json({ error: 'Competencia no encontrada' });
+    }
+
+    const fechaActual = new Date();
+    fechaActual.setHours(0, 0, 0, 0);
+
+    // Verificar si alguna etapa ya comenzó o está en curso
+    const etapaEnCursoOPasada = competenciaExistente.etapas.some(etapa => {
+      const fechaInicio = new Date(etapa.fechaInicio);
+      fechaInicio.setHours(0, 0, 0, 0);
+      return fechaInicio <= fechaActual;
+    });
+
+    // Si hay etapas en curso o pasadas, no permitir editar fechas
+    let puedeEditarFechas = !etapaEnCursoOPasada;
+
+    // Validar que las fechas de etapas no se sobrepongan (solo si se pueden editar fechas)
+    if (puedeEditarFechas && etapas && etapas.length > 0) {
+      const etapasOrdenadas = [...etapas].sort((a, b) => a.orden - b.orden);
+      
+      for (let i = 0; i < etapasOrdenadas.length - 1; i++) {
+        const etapaActual = etapasOrdenadas[i];
+        const etapaSiguiente = etapasOrdenadas[i + 1];
+        
+        const finActual = new Date(etapaActual.fechaFin);
+        const inicioSiguiente = new Date(etapaSiguiente.fechaInicio);
+        
+        if (finActual >= inicioSiguiente) {
+          return res.status(400).json({
+            error: 'Las fechas de las etapas se sobrelapan',
+            detalles: `La etapa "${etapaActual.nombreEtapa}" termina después de que inicie "${etapaSiguiente.nombreEtapa}"`
+          });
+        }
+      }
+    }
+
+    // Actualizar competencia
+    const dataToUpdate = {
+      nombreCompet,
+      costo: parseFloat(costo)
+    };
+
+    // Solo actualizar fechas si es permitido
+    if (puedeEditarFechas && etapas && etapas.length > 0) {
+      const primeraEtapa = etapas.find(e => e.orden === 1);
+      const ultimaEtapa = etapas.reduce((max, etapa) => 
+        etapa.orden > max.orden ? etapa : max, etapas[0]);
+      
+      if (primeraEtapa && ultimaEtapa) {
+        dataToUpdate.fechaIni = new Date(primeraEtapa.fechaInicio);
+        dataToUpdate.fechaFin = new Date(ultimaEtapa.fechaFin);
+      }
+    }
+
+    await prisma.$transaction(async (tx) => {
+      // Actualizar competencia
+      await tx.competencia.update({
+        where: { codCompet: parseInt(codComp) },
+        data: dataToUpdate
+      });
+
+      // Actualizar etapas solo si se pueden editar fechas
+      if (puedeEditarFechas && etapas && etapas.length > 0) {
+        for (const etapa of etapas) {
+          await tx.etapaCompetencia.update({
+            where: { codEtapa: etapa.codEtapa },
+            data: {
+              fechaInicio: new Date(etapa.fechaInicio),
+              fechaFin: new Date(etapa.fechaFin)
+            }
+          });
+        }
+      }
+    });
+
+    res.json({ 
+      message: 'Competencia actualizada exitosamente',
+      puedeEditarFechas 
+    });
+
+  } catch (error) {
+    console.error('Error al actualizar competencia:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+}
+
 module.exports ={
     getAreaByCompetidor,
     getCompByPersonaAndArea,
     getEtapaPago,
     getEtapaValidacion,
     getEtapaInscripciones,
+    getCompetenciaById,
+    updateCompetencia,
 }
