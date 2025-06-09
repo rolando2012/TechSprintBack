@@ -362,102 +362,70 @@ async function updateCompetencia(req, res) {
     const { codComp } = req.params;
     const { nombreCompet, costo, etapas } = req.body;
 
-    // Validar que la competencia existe
+    // 1) Validar existencia
     const competenciaExistente = await prisma.competencia.findUnique({
       where: { codCompet: parseInt(codComp) },
-      include: {
-        etapas: {
-          orderBy: { orden: 'asc' }
-        }
-      }
+      include: { etapas: { orderBy: { orden: 'asc' } } }
     });
-
     if (!competenciaExistente) {
       return res.status(404).json({ error: 'Competencia no encontrada' });
     }
 
-    const fechaActual = new Date();
-    fechaActual.setHours(0, 0, 0, 0);
-
-    // Verificar si alguna etapa ya comenzó o está en curso
-    const etapaEnCursoOPasada = competenciaExistente.etapas.some(etapa => {
-      const fechaInicio = new Date(etapa.fechaInicio);
-      fechaInicio.setHours(0, 0, 0, 0);
-      return fechaInicio <= fechaActual;
-    });
-
-    // Si hay etapas en curso o pasadas, no permitir editar fechas
-    let puedeEditarFechas = !etapaEnCursoOPasada;
-
-    // Validar que las fechas de etapas no se sobrepongan (solo si se pueden editar fechas)
-    if (puedeEditarFechas && etapas && etapas.length > 0) {
-      const etapasOrdenadas = [...etapas].sort((a, b) => a.orden - b.orden);
-      
-      for (let i = 0; i < etapasOrdenadas.length - 1; i++) {
-        const etapaActual = etapasOrdenadas[i];
-        const etapaSiguiente = etapasOrdenadas[i + 1];
-        
-        const finActual = new Date(etapaActual.fechaFin);
-        const inicioSiguiente = new Date(etapaSiguiente.fechaInicio);
-        
-        if (finActual >= inicioSiguiente) {
-          return res.status(400).json({
-            error: 'Las fechas de las etapas se sobrelapan',
-            detalles: `La etapa "${etapaActual.nombreEtapa}" termina después de que inicie "${etapaSiguiente.nombreEtapa}"`
-          });
-        }
-      }
+    // 2) Recalcular siempre fechas de competencia (basado en body.etapas si viene, 
+    //    o en las de BD si no viene ninguna)
+    let todasEtapas = competenciaExistente.etapas;
+    if (Array.isArray(etapas) && etapas.length > 0) {
+      // fusionar: reemplazar solo las que vienen en body
+      const byCod = Object.fromEntries(etapas.map(e => [e.codEtapa, e]));
+      todasEtapas = competenciaExistente.etapas.map(e =>
+        byCod[e.codEtapa] 
+          ? { ...e, fechaInicio: byCod[e.codEtapa].fechaInicio, fechaFin: byCod[e.codEtapa].fechaFin }
+          : e
+      );
     }
+    // ordenar y extraer primera y última
+    todasEtapas.sort((a,b) => a.orden - b.orden);
+    const primera = todasEtapas[0];
+    const ultima  = todasEtapas[todasEtapas.length - 1];
 
-    // Actualizar competencia
     const dataToUpdate = {
       nombreCompet,
-      costo: parseFloat(costo)
+      costo: parseFloat(costo),
+      fechaIni: new Date(primera.fechaInicio),
+      fechaFin: new Date(ultima.fechaFin)
     };
 
-    // Solo actualizar fechas si es permitido
-    if (puedeEditarFechas && etapas && etapas.length > 0) {
-      const primeraEtapa = etapas.find(e => e.orden === 1);
-      const ultimaEtapa = etapas.reduce((max, etapa) => 
-        etapa.orden > max.orden ? etapa : max, etapas[0]);
-      
-      if (primeraEtapa && ultimaEtapa) {
-        dataToUpdate.fechaIni = new Date(primeraEtapa.fechaInicio);
-        dataToUpdate.fechaFin = new Date(ultimaEtapa.fechaFin);
-      }
-    }
-
-    await prisma.$transaction(async (tx) => {
-      // Actualizar competencia
+    // 3) Ejecutar transacción: 
+    //    - actualizar competencia
+    //    - actualizar SOLO las etapas que vienen en body
+    await prisma.$transaction(async tx => {
       await tx.competencia.update({
         where: { codCompet: parseInt(codComp) },
         data: dataToUpdate
       });
 
-      // Actualizar etapas solo si se pueden editar fechas
-      if (puedeEditarFechas && etapas && etapas.length > 0) {
-        for (const etapa of etapas) {
+      if (Array.isArray(etapas) && etapas.length > 0) {
+        for (const e of etapas) {
           await tx.etapaCompetencia.update({
-            where: { codEtapa: etapa.codEtapa },
+            where: { codEtapa: e.codEtapa },
             data: {
-              fechaInicio: new Date(etapa.fechaInicio),
-              fechaFin: new Date(etapa.fechaFin)
+              fechaInicio: new Date(e.fechaInicio),
+              fechaFin:    new Date(e.fechaFin)
             }
           });
         }
       }
     });
 
-    res.json({ 
-      message: 'Competencia actualizada exitosamente',
-      puedeEditarFechas 
+    res.json({
+      message: 'Competencia actualizada exitosamente'
     });
-
   } catch (error) {
     console.error('Error al actualizar competencia:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 }
+
 
 module.exports ={
     getAreaByCompetidor,
