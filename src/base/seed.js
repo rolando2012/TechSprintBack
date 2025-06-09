@@ -12,9 +12,9 @@ async function seedPrimeraCompetencia() {
     create: {
       nombreCompet: "Olimpiada de Ciencia y Tecnología",
       fechaIni: new Date("2025-05-15"),      // inicio de inscripciones
-      fechaFin: new Date("2025-09-14"),      // fin de última etapa (Competición)
+      fechaFin: new Date("2025-06-29"),      // fin de última etapa (Competición)
       horaIniIns: new Date("2025-05-15T00:00:00"),
-      horaFinIns: new Date("2025-06-14T23:59:59"),
+      horaFinIns: new Date("2025-06-29T23:59:59"),
       costo: 16.0,
       gestion: 2025,
     },
